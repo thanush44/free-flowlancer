@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  body {
+    background-color: #f4f4f6; /* Sophisticated Light Ash / Titanium Gray */
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.08) 0px, transparent 45%),
+      radial-gradient(at 100% 0%, rgba(249, 115, 22, 0.09) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(220, 38, 38, 0.05) 0px, transparent 45%),
+      radial-gradient(at 10% 50%, rgba(245, 158, 11, 0.04) 0px, transparent 40%);
+    background-attachment: fixed;
+    color: #18181b; /* Crisp dark obsidian text for maximum legibility */
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background-color: #f59e0b; /* Gold */
+    color: #ffffff; /* White */
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f4f4f6;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(249, 115, 22, 0.7);
+}
+
+/* Glassmorphism helpers for White, Gold, Red, Orange on Ash */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(228, 228, 231, 0.9);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+.glass-card {
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.04);
+}
+
+/* Glowing auras */
+.glow-gold {
+  box-shadow: 0 4px 24px -2px rgba(245, 158, 11, 0.28);
+}
+
+.glow-orange {
+  box-shadow: 0 4px 24px -2px rgba(249, 115, 22, 0.28);
+}
+
+.glow-red {
+  box-shadow: 0 4px 24px -2px rgba(239, 68, 68, 0.28);
+}

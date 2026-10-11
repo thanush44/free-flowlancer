@@ -1,0 +1,22 @@
+{
+  "name": "freelanceflow",
+  "version": "1.0.0",
+  "description": "FreelanceFlow — A Project Management and Invoicing Tool for Freelancers",
+  "scripts": {
+    "start": "node server/server.js",
+    "server": "node server/server.js",
+    "client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "seed": "node server/scripts/seed.js"
+  },
+  "keywords": [
+    "freelancer",
+    "saas",
+    "project-management",
+    "invoicing",
+    "time-tracking",
+    "b2b"
+  ],
+  "author": "FreelanceFlow Developer",
+  "license": "ISC"
+}
