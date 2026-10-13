@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { useTimer } from '../context/TimerContext';
-import { Play, Square, X, Clock, AlertCircle } from 'lucide-react';
+import { Square, X, Clock, AlertCircle } from 'lucide-react';
 
 export default function StopwatchBar({ projects = [], onOpenTracker }) {
   const {
     isRunning,
     formattedTime,
     projectId,
-    projectName,
     taskTitle,
     description,
     isSubmitting,
@@ -34,28 +33,32 @@ export default function StopwatchBar({ projects = [], onOpenTracker }) {
   }
 
   return (
-    <div className="sticky top-0 z-50 bg-white border-b-2 border-amber-400 shadow-md shadow-amber-500/10 px-4 py-2.5 transition-all">
+    <div className="sticky top-[57px] z-20 bg-[#fffdfa] border-b border-[#e8e1d3] px-4 sm:px-8 py-2.5 shadow-subtle transition-all">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
         {/* Left: Indicator & Time */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-full">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-500 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500"></span>
+        <div
+          onClick={onOpenTracker}
+          className="flex items-center space-x-3 cursor-pointer group"
+          title="Open Time Tracker"
+        >
+          <div className="flex items-center space-x-2 bg-[#fef3c7] border border-[#fde68a] px-2.5 py-1 rounded-lg group-hover:bg-[#fde68a]/60 transition">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#d97706] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#d97706]"></span>
             </span>
-            <span className="text-xs font-bold tracking-wider text-amber-800 uppercase">
+            <span className="text-[10px] font-bold tracking-wider text-[#92400e] uppercase">
               Timer Active
             </span>
           </div>
 
-          <div className="font-mono text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-amber-500 animate-pulse" />
+          <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-[#1c1917] flex items-center gap-2 group-hover:text-[#b45309] transition">
+            <Clock className="w-4 h-4 text-[#b45309]" />
             <span>{formattedTime}</span>
           </div>
         </div>
 
         {/* Center: Project, Task & Work Note */}
-        <div className="flex-1 flex flex-wrap items-center gap-2 min-w-[280px]">
+        <div className="flex-1 flex flex-wrap items-center gap-2 min-w-[260px]">
           <select
             value={projectId || ''}
             onChange={(e) => {
@@ -65,7 +68,7 @@ export default function StopwatchBar({ projects = [], onOpenTracker }) {
                 projectName: selectedP ? selectedP.name : '',
               });
             }}
-            className="bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-amber-500 focus:bg-white max-w-[200px]"
+            className="bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#b45309] max-w-[200px]"
           >
             <option value="">Select Project *</option>
             {projects.map((p) => (
@@ -76,7 +79,7 @@ export default function StopwatchBar({ projects = [], onOpenTracker }) {
           </select>
 
           {taskTitle && (
-            <span className="text-xs bg-orange-50 text-orange-800 border border-orange-200 px-2 py-1 rounded-lg font-medium">
+            <span className="text-xs bg-[#f4f7f4] text-[#304434] border border-[#cedece] px-2 py-1 rounded-lg font-medium">
               Task: {taskTitle}
             </span>
           )}
@@ -86,15 +89,15 @@ export default function StopwatchBar({ projects = [], onOpenTracker }) {
             placeholder="What are you working on right now?"
             value={description || ''}
             onChange={(e) => updateTimerDetails({ description: e.target.value })}
-            className="flex-1 min-w-[160px] bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-amber-500 focus:bg-white placeholder-stone-400"
+            className="flex-1 min-w-[160px] bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#b45309] placeholder-[#a8a29e]"
           />
         </div>
 
         {/* Right: Actions */}
         <div className="flex items-center space-x-2">
           {errorMsg && (
-            <span className="text-xs text-red-600 font-semibold flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+            <span className="text-xs text-[#a74328] font-medium flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5 text-[#c05638]" />
               {errorMsg}
             </span>
           )}
@@ -102,7 +105,7 @@ export default function StopwatchBar({ projects = [], onOpenTracker }) {
           <button
             onClick={handleStop}
             disabled={isSubmitting}
-            className="inline-flex items-center space-x-1.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-xs font-black px-4 py-2 rounded-xl shadow-lg shadow-red-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+            className="inline-flex items-center space-x-1.5 bg-[#c05638] hover:bg-[#a74328] text-white text-xs font-semibold px-3.5 py-1.5 rounded-xl shadow-subtle hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
           >
             <Square className="w-3.5 h-3.5 fill-current" />
             <span>{isSubmitting ? 'Saving...' : 'Stop & Log'}</span>
@@ -111,7 +114,7 @@ export default function StopwatchBar({ projects = [], onOpenTracker }) {
           <button
             onClick={discardTimer}
             title="Discard current timer without logging"
-            className="text-stone-400 hover:text-stone-700 p-1.5 rounded-xl hover:bg-stone-100 transition"
+            className="text-[#78716c] hover:text-[#1c1917] p-1.5 rounded-xl hover:bg-[#efe9de] transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -120,3 +123,4 @@ export default function StopwatchBar({ projects = [], onOpenTracker }) {
     </div>
   );
 }
+

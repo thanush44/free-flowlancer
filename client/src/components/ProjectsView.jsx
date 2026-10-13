@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { useTimer } from '../context/TimerContext';
 import {
   FolderKanban,
   Plus,
   Play,
-  CheckCircle2,
   Clock,
   Calendar,
-  DollarSign,
-  AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  MoreVertical,
   Trash2,
   Edit2,
   X,
@@ -22,7 +15,6 @@ import {
 } from 'lucide-react';
 
 export default function ProjectsView({ onStartStopwatch }) {
-  const { startTimer, isRunning, projectId: activeTimerProjectId } = useTimer();
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +25,7 @@ export default function ProjectsView({ onStartStopwatch }) {
   // Modal states
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [projectToDelete, setProjectToDelete] = useState(null);
   const [projectFormData, setProjectFormData] = useState({
     client_id: '',
     name: '',
@@ -148,14 +141,15 @@ export default function ProjectsView({ onStartStopwatch }) {
     }
   }
 
-  async function handleDeleteProject(proj) {
-    if (!window.confirm(`Delete project "${proj.name}" and all associated tasks?`)) return;
+  async function confirmDeleteProject() {
+    if (!projectToDelete) return;
     try {
-      await api.deleteProject(proj.id);
-      if (selectedProject?.id === proj.id) setSelectedProject(null);
+      await api.deleteProject(projectToDelete.id);
+      if (selectedProject?.id === projectToDelete.id) setSelectedProject(null);
+      setProjectToDelete(null);
       await loadData();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Failed to delete project');
     }
   }
 
@@ -207,14 +201,14 @@ export default function ProjectsView({ onStartStopwatch }) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-2xl font-bold text-stone-900 tracking-tight font-heading">
-              Projects & Tasks
-            </h1>
-            <span className="text-xs bg-amber-50 text-amber-800 px-2.5 py-0.5 rounded-full border border-amber-300 font-semibold">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#1c1917] tracking-tight font-heading">
+              Projects & Deliverables
+            </h2>
+            <span className="text-[11px] font-mono bg-[#f7f4ee] text-[#57534e] px-2.5 py-0.5 rounded-md border border-[#e8e1d3] font-semibold">
               {projects.length} Total
             </span>
           </div>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-[#78716c] mt-1">
             Track business deliverables, task hierarchies, and automatic budget burn rates.
           </p>
         </div>
@@ -222,15 +216,15 @@ export default function ProjectsView({ onStartStopwatch }) {
         <button
           onClick={openCreateProjectModal}
           disabled={clients.length === 0}
-          className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:via-orange-400 hover:to-red-400 text-white text-xs font-black px-4.5 py-2.5 rounded-xl shadow-lg shadow-orange-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+          className="inline-flex items-center space-x-1.5 bg-[#4d6b53] hover:bg-[#3d5642] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-subtle hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
         >
-          <Plus className="w-4 h-4 stroke-[3]" />
+          <Plus className="w-3.5 h-3.5" />
           <span>New Project</span>
         </button>
       </div>
 
       {clients.length === 0 && (
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-[#fffbeb] border border-[#fde68a] text-[#92400e] text-xs flex items-center justify-between">
           <span>You need at least 1 client before you can create a project.</span>
         </div>
       )}
@@ -240,12 +234,12 @@ export default function ProjectsView({ onStartStopwatch }) {
         {/* Left Column: Project Cards Grid */}
         <div className={selectedProject ? 'lg:col-span-7 space-y-4' : 'lg:col-span-12 space-y-4'}>
           {loading ? (
-            <div className="text-center py-12 text-stone-400 text-sm">Loading projects...</div>
+            <div className="text-center py-12 text-[#78716c] text-xs">Loading projects...</div>
           ) : projects.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-stone-200 p-8 shadow-sm">
-              <FolderKanban className="w-12 h-12 text-amber-400/60 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-stone-900">No projects created yet</h3>
-              <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+            <div className="text-center py-14 bg-white rounded-2xl border border-[#e8e1d3] p-8 shadow-subtle">
+              <FolderKanban className="w-10 h-10 text-[#a8a29e] mx-auto mb-2.5 opacity-80" />
+              <h3 className="text-sm font-semibold text-[#1c1917]">No projects created yet</h3>
+              <p className="text-xs text-[#78716c] mt-1 max-w-sm mx-auto">
                 Create a project to begin tracking tasks, real-time hours, and budget consumption.
               </p>
             </div>
@@ -260,29 +254,29 @@ export default function ProjectsView({ onStartStopwatch }) {
                 return (
                   <div
                     key={proj.id}
-                    className={`bg-white rounded-2xl border p-5 transition flex flex-col justify-between shadow-sm relative ${
+                    className={`bg-white rounded-2xl border p-5 transition flex flex-col justify-between shadow-subtle relative ${
                       isSelected
-                        ? 'border-amber-500 ring-2 ring-amber-400/30 bg-amber-50/10'
-                        : 'border-stone-200/90 hover:border-amber-400'
+                        ? 'border-[#b45309] ring-1 ring-[#b45309]/30 bg-[#fdfcf9]'
+                        : 'border-[#e8e1d3] hover:border-[#c2b6a3]'
                     }`}
                   >
                     <div>
                       {/* Top Header */}
                       <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <span className="text-[10px] uppercase font-bold tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        <div className="min-w-0">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-[#78716c] bg-[#f7f4ee] px-2 py-0.5 rounded-md border border-[#e8e1d3]">
                             {proj.client_name}
                           </span>
-                          <h3 className="text-base font-bold text-stone-900 mt-1.5 line-clamp-1">
+                          <h3 className="text-sm font-bold text-[#1c1917] mt-1.5 truncate">
                             {proj.name}
                           </h3>
                         </div>
 
                         <span
-                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize ${
+                          className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md capitalize shrink-0 ${
                             proj.status === 'completed'
-                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                              : 'bg-orange-50 text-orange-800 border border-orange-200'
+                              ? 'bg-[#f4f7f4] text-[#304434] border border-[#cedece]'
+                              : 'bg-[#fffbeb] text-[#92400e] border border-[#fde68a]'
                           }`}
                         >
                           {proj.status}
@@ -290,55 +284,55 @@ export default function ProjectsView({ onStartStopwatch }) {
                       </div>
 
                       {proj.description && (
-                        <p className="text-xs text-stone-500 mt-2 line-clamp-2">{proj.description}</p>
+                        <p className="text-xs text-[#78716c] mt-2 line-clamp-2">{proj.description}</p>
                       )}
 
                       {/* Burn Rate Progress Bar */}
-                      <div className="mt-4 p-3.5 rounded-xl bg-stone-50 border border-stone-200">
+                      <div className="mt-3.5 p-3 rounded-xl bg-[#f7f4ee] border border-[#e8e1d3]">
                         <div className="flex items-center justify-between text-xs mb-1.5">
-                          <span className="text-stone-600 font-medium">Budget Burn Rate</span>
+                          <span className="text-[#57534e] font-medium text-[11px]">Budget Burn Rate</span>
                           <span
-                            className={`font-bold font-mono ${
+                            className={`font-bold font-mono text-xs ${
                               isOver
-                                ? 'text-red-600'
+                                ? 'text-[#c05638]'
                                 : isWarn
-                                ? 'text-orange-600'
-                                : 'text-amber-600'
+                                ? 'text-[#d97706]'
+                                : 'text-[#4d6b53]'
                             }`}
                           >
                             {pct}%
                           </span>
                         </div>
 
-                        <div className="w-full bg-stone-200 rounded-full h-2 overflow-hidden">
+                        <div className="w-full bg-[#e8e1d3] rounded-full h-1.5 overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
                               isOver
-                                ? 'bg-gradient-to-r from-red-600 to-rose-500'
+                                ? 'bg-[#c05638]'
                                 : isWarn
-                                ? 'bg-gradient-to-r from-amber-500 to-orange-500'
-                                : 'bg-gradient-to-r from-amber-400 to-amber-500'
+                                ? 'bg-[#d97706]'
+                                : 'bg-[#4d6b53]'
                             }`}
                             style={{ width: `${Math.min(pct, 100)}%` }}
                           ></div>
                         </div>
 
-                        <div className="mt-2.5 flex items-center justify-between text-[11px] text-stone-500 font-mono">
-                          <span className="text-stone-900 font-bold">${Number(proj.spent_amount || 0).toLocaleString()} spent</span>
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-[#78716c] font-mono">
+                          <span className="text-[#1c1917] font-semibold">${Number(proj.spent_amount || 0).toLocaleString()} spent</span>
                           <span>Budget: ${Number(proj.budget || 0).toLocaleString()}</span>
                         </div>
                       </div>
 
                       {/* Metadata: deadline & tasks */}
-                      <div className="mt-3.5 flex items-center justify-between text-xs text-stone-500">
+                      <div className="mt-3 flex items-center justify-between text-xs text-[#78716c]">
                         <span className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-amber-500" />
-                          <span>{Number(proj.total_hours_logged || 0).toFixed(1)} hrs logged</span>
+                          <Clock className="w-3.5 h-3.5 text-[#a8a29e]" />
+                          <span className="font-mono text-[11px]">{Number(proj.total_hours_logged || 0).toFixed(1)} hrs</span>
                         </span>
 
                         {proj.deadline && (
-                          <span className="flex items-center gap-1.5 font-mono text-[11px]">
-                            <Calendar className="w-3.5 h-3.5 text-orange-500" />
+                          <span className="flex items-center gap-1.5 font-mono text-[11px] text-[#92400e]">
+                            <Calendar className="w-3.5 h-3.5 text-[#b45309]" />
                             <span>Due {proj.deadline}</span>
                           </span>
                         )}
@@ -346,20 +340,20 @@ export default function ProjectsView({ onStartStopwatch }) {
                     </div>
 
                     {/* Bottom Actions */}
-                    <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between">
+                    <div className="mt-4 pt-3 border-t border-[#f4efe6] flex items-center justify-between">
                       <button
                         onClick={() => handleSelectProject(proj)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition ${
+                        className={`text-xs font-semibold px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 transition ${
                           isSelected
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold shadow-md shadow-orange-500/20'
-                            : 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200'
+                            ? 'bg-[#1c1917] text-white shadow-subtle'
+                            : 'bg-[#f7f4ee] text-[#44403c] hover:bg-[#efe9de] border border-[#e8e1d3]'
                         }`}
                       >
-                        <ListTodo className="w-3.5 h-3.5 text-amber-500" />
+                        <ListTodo className="w-3.5 h-3.5 text-[#b45309]" />
                         <span>Tasks ({proj.completed_tasks || 0}/{proj.total_tasks || 0})</span>
                       </button>
 
-                      <div className="flex items-center space-x-1.5">
+                      <div className="flex items-center space-x-1">
                         <button
                           onClick={() =>
                             onStartStopwatch({
@@ -368,21 +362,21 @@ export default function ProjectsView({ onStartStopwatch }) {
                               description: `Working on ${proj.name}`,
                             })
                           }
-                          title="Start timer for this project"
-                          className="p-1.5 text-amber-600 hover:text-amber-800 rounded-lg hover:bg-stone-100 transition"
+                          title="Start stopwatch for this project"
+                          className="p-1.5 text-[#4d6b53] hover:text-[#3d5642] rounded-lg hover:bg-[#f4f7f4] transition"
                         >
                           <Play className="w-3.5 h-3.5 fill-current" />
                         </button>
                         <button
                           onClick={() => openEditProjectModal(proj)}
-                          className="p-1.5 text-stone-400 hover:text-stone-800 rounded-lg hover:bg-stone-100 transition"
+                          className="p-1.5 text-[#78716c] hover:text-[#1c1917] rounded-lg hover:bg-[#f7f4ee] transition"
                           title="Edit project"
                         >
-                          <Edit2 className="w-3.5 h-3.5 text-amber-600" />
+                          <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDeleteProject(proj)}
-                          className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-stone-100 transition"
+                          onClick={() => setProjectToDelete(proj)}
+                          className="p-1.5 text-[#78716c] hover:text-[#c05638] rounded-lg hover:bg-[#fdf6f4] transition"
                           title="Delete project"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -398,13 +392,13 @@ export default function ProjectsView({ onStartStopwatch }) {
 
         {/* Right Column: Task Management Drawer */}
         {selectedProject && (
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-stone-200/90 p-5 shadow-xl flex flex-col h-fit sticky top-20">
-            <div className="flex items-center justify-between pb-3.5 border-b border-stone-100">
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-[#e8e1d3] p-5 shadow-dropdown flex flex-col h-fit sticky top-24">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#e8e1d3]">
               <div>
-                <span className="text-[10px] uppercase font-bold text-amber-700">
+                <span className="text-[10px] uppercase font-bold text-[#b45309]">
                   Tasks for Project
                 </span>
-                <h3 className="text-base font-bold text-stone-900 line-clamp-1">
+                <h3 className="text-sm font-bold text-[#1c1917] line-clamp-1">
                   {selectedProject.name}
                 </h3>
               </div>
@@ -412,14 +406,14 @@ export default function ProjectsView({ onStartStopwatch }) {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setIsTaskModalOpen(true)}
-                  className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:via-orange-400 hover:to-red-400 text-white text-xs font-black px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-orange-500/25 hover:scale-105 active:scale-95 transition-all"
+                  className="bg-[#4d6b53] hover:bg-[#3d5642] text-white text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-subtle hover:scale-[1.01] active:scale-[0.99] transition-all"
                 >
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <Plus className="w-3.5 h-3.5" />
                   <span>Add Task</span>
                 </button>
                 <button
                   onClick={() => setSelectedProject(null)}
-                  className="text-stone-400 hover:text-stone-700 p-1 rounded-lg"
+                  className="text-[#78716c] hover:text-[#1c1917] p-1 rounded-lg"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -427,11 +421,11 @@ export default function ProjectsView({ onStartStopwatch }) {
             </div>
 
             {/* Task List */}
-            <div className="mt-4 space-y-2.5 max-h-[550px] overflow-y-auto pr-1">
+            <div className="mt-3.5 space-y-2 max-h-[520px] overflow-y-auto pr-1">
               {tasksLoading ? (
-                <div className="text-center py-8 text-xs text-stone-400">Loading tasks...</div>
+                <div className="text-center py-8 text-xs text-[#78716c]">Loading tasks...</div>
               ) : projectTasks.length === 0 ? (
-                <div className="text-center py-8 text-xs text-stone-400">
+                <div className="text-center py-8 text-xs text-[#78716c]">
                   No tasks added yet for this project.
                 </div>
               ) : (
@@ -440,19 +434,19 @@ export default function ProjectsView({ onStartStopwatch }) {
                   return (
                     <div
                       key={t.id}
-                      className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition ${
+                      className={`p-3 rounded-xl border flex items-center justify-between gap-2.5 transition ${
                         isDone
-                          ? 'bg-stone-50 border-stone-200/60 opacity-60'
-                          : 'bg-stone-50 border-stone-200 hover:border-amber-300'
+                          ? 'bg-[#f7f4ee] border-[#e8e1d3] opacity-60'
+                          : 'bg-white border-[#e8e1d3] hover:border-[#c2b6a3]'
                       }`}
                     >
-                      <div className="flex items-center space-x-3 min-w-0">
+                      <div className="flex items-center space-x-2.5 min-w-0">
                         <button
                           onClick={() => handleToggleTaskStatus(t)}
                           className={`w-4 h-4 rounded flex items-center justify-center transition shrink-0 ${
                             isDone
-                              ? 'bg-amber-500 text-white'
-                              : 'border border-amber-400 hover:border-amber-500'
+                              ? 'bg-[#4d6b53] text-white'
+                              : 'border border-[#e8e1d3] hover:border-[#4d6b53]'
                           }`}
                         >
                           {isDone && <Check className="w-3 h-3 stroke-[3]" />}
@@ -460,12 +454,12 @@ export default function ProjectsView({ onStartStopwatch }) {
                         <div className="min-w-0">
                           <p
                             className={`text-xs font-medium truncate ${
-                              isDone ? 'line-through text-stone-400' : 'text-stone-900'
+                              isDone ? 'line-through text-[#a8a29e]' : 'text-[#1c1917]'
                             }`}
                           >
                             {t.title}
                           </p>
-                          <div className="flex items-center gap-2 text-[10px] text-stone-500 mt-0.5 font-mono">
+                          <div className="flex items-center gap-2 text-[10px] text-[#78716c] mt-0.5 font-mono">
                             {t.due_date && <span>Due: {t.due_date}</span>}
                             {t.estimated_hours > 0 && <span>Est: {t.estimated_hours}h</span>}
                           </div>
@@ -484,13 +478,13 @@ export default function ProjectsView({ onStartStopwatch }) {
                             })
                           }
                           title="Start timer for this task"
-                          className="p-1 text-amber-600 hover:text-amber-800 rounded hover:bg-stone-200/60 transition"
+                          className="p-1 text-[#4d6b53] hover:text-[#3d5642] rounded hover:bg-[#f4f7f4] transition"
                         >
                           <Play className="w-3.5 h-3.5 fill-current" />
                         </button>
                         <button
                           onClick={() => handleDeleteTask(t.id)}
-                          className="p-1 text-stone-400 hover:text-red-600 rounded hover:bg-stone-200/60 transition"
+                          className="p-1 text-[#78716c] hover:text-[#c05638] rounded hover:bg-[#fdf6f4] transition"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -504,32 +498,70 @@ export default function ProjectsView({ onStartStopwatch }) {
         )}
       </div>
 
+      {/* Delete Project Confirmation Modal */}
+      {projectToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1c1917]/40 backdrop-blur-sm">
+          <div className="bg-[#fbf9f5] border border-[#e8e1d3] rounded-2xl w-full max-w-md p-6 shadow-dropdown relative">
+            <div className="flex items-start space-x-3">
+              <div className="w-9 h-9 rounded-xl bg-[#fdf6f4] border border-[#f5d3ca] flex items-center justify-center text-[#c05638] shrink-0 mt-0.5">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#1c1917] font-heading">
+                  Delete Project "{projectToDelete.name}"?
+                </h3>
+                <p className="text-xs text-[#78716c] mt-1 leading-relaxed">
+                  Deleting this project will permanently remove all associated tasks and work logs. This operation cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end space-x-2 pt-3 border-t border-[#e8e1d3]">
+              <button
+                type="button"
+                onClick={() => setProjectToDelete(null)}
+                className="px-3.5 py-2 text-xs font-semibold text-[#57534e] hover:text-[#1c1917] rounded-xl hover:bg-[#efe9de] transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteProject}
+                className="px-4 py-2 text-xs font-semibold text-white bg-[#c05638] hover:bg-[#a74328] rounded-xl shadow-subtle transition"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create / Edit Project Modal */}
       {isProjectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-sm">
-          <div className="bg-white border border-stone-200 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-stone-900 font-heading">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1c1917]/40 backdrop-blur-sm">
+          <div className="bg-[#fbf9f5] border border-[#e8e1d3] rounded-2xl w-full max-w-lg p-6 shadow-dropdown relative">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#e8e1d3]">
+              <h3 className="text-base font-bold text-[#1c1917] font-heading">
                 {editingProject ? 'Edit Project' : 'Create New Project'}
               </h3>
               <button
                 onClick={() => setIsProjectModalOpen(false)}
-                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg"
+                className="text-[#78716c] hover:text-[#1c1917] p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {errorMessage && (
-              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div className="mt-3.5 p-3 rounded-xl bg-[#fdf6f4] border border-[#f5d3ca] text-[#86341f] text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-[#c05638]" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
-            <form onSubmit={handleProjectSubmit} className="space-y-4">
+            <form onSubmit={handleProjectSubmit} className="mt-4 space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                <label className="block text-xs font-semibold text-[#44403c] mb-1">
                   Assign to Client *
                 </label>
                 <select
@@ -538,7 +570,7 @@ export default function ProjectsView({ onStartStopwatch }) {
                   onChange={(e) =>
                     setProjectFormData({ ...projectFormData, client_id: e.target.value })
                   }
-                  className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+                  className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309]"
                 >
                   <option value="">Select a Client</option>
                   {clients.map((c) => (
@@ -550,39 +582,39 @@ export default function ProjectsView({ onStartStopwatch }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                <label className="block text-xs font-semibold text-[#44403c] mb-1">
                   Project Name *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Website Redesign & SEO"
+                  placeholder="e.g. Website Redesign & Technical SEO"
                   value={projectFormData.name}
                   onChange={(e) =>
                     setProjectFormData({ ...projectFormData, name: e.target.value })
                   }
-                  className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white placeholder-stone-400"
+                  className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309] placeholder-[#a8a29e]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                <label className="block text-xs font-semibold text-[#44403c] mb-1">
                   Description
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Brief scope of work..."
+                  placeholder="Brief scope of deliverable..."
                   value={projectFormData.description}
                   onChange={(e) =>
                     setProjectFormData({ ...projectFormData, description: e.target.value })
                   }
-                  className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white placeholder-stone-400"
+                  className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309] placeholder-[#a8a29e]"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-semibold text-[#44403c] mb-1">
                     Budget ($) *
                   </label>
                   <input
@@ -594,18 +626,18 @@ export default function ProjectsView({ onStartStopwatch }) {
                     onChange={(e) =>
                       setProjectFormData({ ...projectFormData, budget: e.target.value })
                     }
-                    className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white font-mono"
+                    className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309] font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">Status</label>
+                  <label className="block text-xs font-semibold text-[#44403c] mb-1">Status</label>
                   <select
                     value={projectFormData.status}
                     onChange={(e) =>
                       setProjectFormData({ ...projectFormData, status: e.target.value })
                     }
-                    className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+                    className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309]"
                   >
                     <option value="active">Active</option>
                     <option value="completed">Completed</option>
@@ -613,30 +645,30 @@ export default function ProjectsView({ onStartStopwatch }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">Deadline</label>
+                  <label className="block text-xs font-semibold text-[#44403c] mb-1">Deadline</label>
                   <input
                     type="date"
                     value={projectFormData.deadline}
                     onChange={(e) =>
                       setProjectFormData({ ...projectFormData, deadline: e.target.value })
                     }
-                    className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+                    className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309]"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-stone-200">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[#e8e1d3]">
                 <button
                   type="button"
                   onClick={() => setIsProjectModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-stone-500 hover:text-stone-900 transition"
+                  className="px-3.5 py-2 text-xs font-semibold text-[#57534e] hover:text-[#1c1917] rounded-xl hover:bg-[#efe9de] transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:via-orange-400 hover:to-red-400 text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-lg shadow-orange-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                  className="bg-[#4d6b53] hover:bg-[#3d5642] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-subtle hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : editingProject ? 'Save Changes' : 'Create Project'}
                 </button>
@@ -648,23 +680,23 @@ export default function ProjectsView({ onStartStopwatch }) {
 
       {/* Add Task Modal */}
       {isTaskModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-sm">
-          <div className="bg-white border border-stone-200 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-stone-900 font-heading">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1c1917]/40 backdrop-blur-sm">
+          <div className="bg-[#fbf9f5] border border-[#e8e1d3] rounded-2xl w-full max-w-md p-6 shadow-dropdown">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#e8e1d3]">
+              <h3 className="text-sm font-bold text-[#1c1917] font-heading">
                 Add Task for {selectedProject?.name}
               </h3>
               <button
                 onClick={() => setIsTaskModalOpen(false)}
-                className="text-stone-400 hover:text-stone-700 p-1"
+                className="text-[#78716c] hover:text-[#1c1917] p-1"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleTaskSubmit} className="space-y-4">
+            <form onSubmit={handleTaskSubmit} className="mt-4 space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                <label className="block text-xs font-semibold text-[#44403c] mb-1">
                   Task Title *
                 </label>
                 <input
@@ -673,24 +705,24 @@ export default function ProjectsView({ onStartStopwatch }) {
                   placeholder="e.g. Implement user login & sessions"
                   value={taskFormData.title}
                   onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
-                  className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white placeholder-stone-400"
+                  className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309] placeholder-[#a8a29e]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">Due Date</label>
+                  <label className="block text-xs font-semibold text-[#44403c] mb-1">Due Date</label>
                   <input
                     type="date"
                     value={taskFormData.due_date}
                     onChange={(e) =>
                       setTaskFormData({ ...taskFormData, due_date: e.target.value })
                     }
-                    className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+                    className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-semibold text-[#44403c] mb-1">
                     Est. Hours
                   </label>
                   <input
@@ -701,23 +733,23 @@ export default function ProjectsView({ onStartStopwatch }) {
                     onChange={(e) =>
                       setTaskFormData({ ...taskFormData, estimated_hours: e.target.value })
                     }
-                    className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white font-mono"
+                    className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309] font-mono"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-stone-200">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[#e8e1d3]">
                 <button
                   type="button"
                   onClick={() => setIsTaskModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-stone-500 hover:text-stone-900"
+                  className="px-3.5 py-2 text-xs font-semibold text-[#57534e] hover:text-[#1c1917] rounded-xl hover:bg-[#efe9de]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:via-orange-400 hover:to-red-400 text-white text-xs font-black px-5 py-2 rounded-xl shadow-md shadow-orange-500/25 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                  className="bg-[#4d6b53] hover:bg-[#3d5642] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-subtle hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
                 >
                   {isSubmitting ? 'Adding...' : 'Create Task'}
                 </button>
@@ -729,3 +761,4 @@ export default function ProjectsView({ onStartStopwatch }) {
     </div>
   );
 }
+

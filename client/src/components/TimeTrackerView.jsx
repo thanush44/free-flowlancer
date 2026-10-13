@@ -6,15 +6,12 @@ import {
   Play,
   Square,
   Plus,
-  Calendar,
-  DollarSign,
-  Briefcase,
-  CheckCircle,
-  AlertCircle,
   Trash2,
   Filter,
   Check,
+  AlertCircle,
   FileText,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function TimeTrackerView({ setActiveTab }) {
@@ -23,8 +20,6 @@ export default function TimeTrackerView({ setActiveTab }) {
     formattedTime,
     projectId,
     projectName,
-    taskId,
-    taskTitle,
     description,
     isSubmitting: isStopwatchSubmitting,
     startTimer,
@@ -53,6 +48,10 @@ export default function TimeTrackerView({ setActiveTab }) {
   });
   const [manualError, setManualError] = useState('');
   const [isManualSubmitting, setIsManualSubmitting] = useState(false);
+
+  // Delete confirmation modal state
+  const [logToDelete, setLogToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -90,7 +89,7 @@ export default function TimeTrackerView({ setActiveTab }) {
     try {
       const res = await api.getTasks({ project_id: pId });
       setTasks(res.tasks || []);
-    } catch (e) {
+    } catch {
       setTasks([]);
     }
   }
@@ -142,17 +141,22 @@ export default function TimeTrackerView({ setActiveTab }) {
     }
   }
 
-  async function handleDeleteLog(log) {
-    if (log.is_billed) {
+  async function confirmDeleteLog() {
+    if (!logToDelete) return;
+    if (logToDelete.is_billed) {
       alert('This time entry is already billed on an invoice and cannot be deleted.');
+      setLogToDelete(null);
       return;
     }
-    if (!window.confirm('Delete this time log?')) return;
+    setIsDeleting(true);
     try {
-      await api.deleteTimeLog(log.id);
+      await api.deleteTimeLog(logToDelete.id);
+      setLogToDelete(null);
       await loadData();
     } catch (err) {
       alert(err.message);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -166,42 +170,78 @@ export default function TimeTrackerView({ setActiveTab }) {
       {/* Top Banner and Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight font-heading">
+          <h1 className="text-2xl font-bold text-charcoal-900 tracking-tight font-heading">
             Time Tracking Engine
           </h1>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-charcoal-500 mt-1">
             Real-time persistent stopwatch and retroactive manual hour logging.
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
+          {totalUnbilled > 0 && setActiveTab && (
+            <button
+              onClick={() => setActiveTab('invoices')}
+              className="inline-flex items-center space-x-2 bg-ivory-100 hover:bg-ivory-200 text-charcoal-800 border border-charcoal-300 text-xs font-semibold px-3.5 py-2 rounded-xl transition shadow-sm"
+              title="Jump to invoices to bill this time"
+            >
+              <FileText className="w-3.5 h-3.5 text-amber-700" />
+              <span>Draft Invoice (${Number(totalUnbilled).toLocaleString()})</span>
+            </button>
+          )}
+
           <button
             onClick={() => setIsManualModalOpen(true)}
-            className="inline-flex items-center space-x-2 bg-white hover:bg-stone-50 text-stone-800 border border-stone-200 hover:border-amber-400 text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+            className="inline-flex items-center space-x-2 bg-charcoal-900 hover:bg-charcoal-800 text-ivory-50 text-xs font-medium px-4 py-2 rounded-xl transition shadow-sm"
           >
-            <Plus className="w-3.5 h-3.5 text-amber-500 stroke-[2.5]" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Manual Entry</span>
           </button>
         </div>
       </div>
 
-      {/* Main Stopwatch Console Card: Pure White with Amber/Orange Border */}
-      <div className="bg-white border-2 border-amber-300 rounded-2xl p-6 shadow-md shadow-amber-500/10 relative overflow-hidden">
+      {/* Main Stopwatch Console Card: Warm Ivory with Charcoal & Sage Accents */}
+      <div
+        className={`surface-card rounded-2xl p-6 relative overflow-hidden transition-all ${
+          isRunning
+            ? 'border-sage-400 ring-2 ring-sage-200/50 bg-ivory-50'
+            : 'border-charcoal-200/90'
+        }`}
+      >
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           {/* Left: Stopwatch Display */}
           <div className="flex items-center space-x-5">
-            <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
+            <div
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 border ${
+                isRunning
+                  ? 'bg-sage-100/70 border-sage-300 text-sage-800'
+                  : 'bg-ivory-200/70 border-charcoal-200 text-charcoal-600'
+              }`}
+            >
               <Clock
-                className={`w-8 h-8 text-amber-500 ${
-                  isRunning ? 'animate-pulse text-amber-600' : ''
+                className={`w-8 h-8 ${
+                  isRunning ? 'animate-pulse text-sage-700' : 'text-charcoal-600'
                 }`}
               />
             </div>
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
-                {isRunning ? 'Timer Active (Persists on Refresh)' : 'Stopwatch Ready'}
-              </span>
-              <div className="font-mono text-4xl sm:text-5xl font-black text-stone-900 tracking-tight">
+              <div className="flex items-center space-x-2">
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                    isRunning
+                      ? 'bg-sage-100 text-sage-800 border border-sage-300'
+                      : 'bg-ivory-200 text-charcoal-700 border border-charcoal-300'
+                  }`}
+                >
+                  {isRunning ? 'Timer Active • Persists on refresh' : 'Stopwatch Ready'}
+                </span>
+                {isRunning && projectName && (
+                  <span className="text-xs font-medium text-charcoal-700">
+                    &bull; {projectName}
+                  </span>
+                )}
+              </div>
+              <div className="font-mono text-4xl sm:text-5xl font-extrabold text-charcoal-900 tracking-tight mt-1">
                 {formattedTime}
               </div>
             </div>
@@ -210,7 +250,7 @@ export default function TimeTrackerView({ setActiveTab }) {
           {/* Center: Active configuration */}
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
             <div>
-              <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+              <label className="block text-[11px] font-semibold text-charcoal-700 mb-1">
                 Project *
               </label>
               <select
@@ -223,7 +263,7 @@ export default function TimeTrackerView({ setActiveTab }) {
                     projectName: sel ? sel.name : '',
                   });
                 }}
-                className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:bg-white"
+                className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-sage-500 focus:bg-white transition"
               >
                 <option value="">Select Project</option>
                 {projects.map((p) => (
@@ -235,7 +275,7 @@ export default function TimeTrackerView({ setActiveTab }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+              <label className="block text-[11px] font-semibold text-charcoal-700 mb-1">
                 Task Description
               </label>
               <input
@@ -243,7 +283,7 @@ export default function TimeTrackerView({ setActiveTab }) {
                 placeholder="What are you working on?"
                 value={description || ''}
                 onChange={(e) => updateTimerDetails({ description: e.target.value })}
-                className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:bg-white placeholder-stone-400"
+                className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-sage-500 focus:bg-white placeholder-charcoal-400 transition"
               />
             </div>
           </div>
@@ -263,7 +303,7 @@ export default function TimeTrackerView({ setActiveTab }) {
                     startTimer({ description: description || 'Active work session' });
                   }
                 }}
-                className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:via-orange-400 hover:to-red-400 text-white text-sm font-black px-6 py-3 rounded-xl shadow-lg shadow-orange-500/25 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center space-x-2 bg-sage-600 hover:bg-sage-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-sm transition active:scale-95"
               >
                 <Play className="w-4 h-4 fill-current" />
                 <span>Start Timer</span>
@@ -272,7 +312,7 @@ export default function TimeTrackerView({ setActiveTab }) {
               <button
                 onClick={stopTimer}
                 disabled={isStopwatchSubmitting}
-                className="inline-flex items-center space-x-2 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-sm font-black px-6 py-3 rounded-xl shadow-lg shadow-red-600/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                className="inline-flex items-center space-x-2 bg-terracotta-600 hover:bg-terracotta-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-sm transition active:scale-95 disabled:opacity-50"
               >
                 <Square className="w-4 h-4 fill-current" />
                 <span>{isStopwatchSubmitting ? 'Saving...' : 'Stop & Log'}</span>
@@ -283,17 +323,17 @@ export default function TimeTrackerView({ setActiveTab }) {
       </div>
 
       {/* Metrics Row & Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-xl border border-stone-200/90 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 surface-card p-4 rounded-xl border border-charcoal-200/90 shadow-sm">
         <div className="flex items-center space-x-6 text-xs">
           <div>
-            <span className="text-stone-500 block font-medium">Total Logged Time</span>
-            <span className="text-sm font-bold text-stone-900 font-mono">
+            <span className="text-charcoal-500 block font-medium">Total Logged Time</span>
+            <span className="text-sm font-bold text-charcoal-900 font-mono">
               {Number(totalHours).toFixed(2)} hrs
             </span>
           </div>
           <div>
-            <span className="text-stone-500 block font-medium">Unbilled Value</span>
-            <span className="text-sm font-bold text-amber-600 font-mono">
+            <span className="text-charcoal-500 block font-medium">Unbilled Value</span>
+            <span className="text-sm font-bold text-amber-700 font-mono">
               ${Number(totalUnbilled).toLocaleString()}
             </span>
           </div>
@@ -301,15 +341,15 @@ export default function TimeTrackerView({ setActiveTab }) {
 
         {/* Filter dropdowns */}
         <div className="flex items-center space-x-2.5">
-          <div className="flex items-center space-x-1.5 text-xs text-amber-800 font-semibold">
-            <Filter className="w-3.5 h-3.5 text-amber-600" />
+          <div className="flex items-center space-x-1.5 text-xs text-charcoal-600 font-medium">
+            <Filter className="w-3.5 h-3.5 text-charcoal-400" />
             <span>Filter:</span>
           </div>
 
           <select
             value={filterProject}
             onChange={(e) => setFilterProject(e.target.value)}
-            className="bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+            className="bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-sage-500 focus:bg-white transition"
           >
             <option value="">All Projects</option>
             {projects.map((p) => (
@@ -322,7 +362,7 @@ export default function TimeTrackerView({ setActiveTab }) {
           <select
             value={filterBilled}
             onChange={(e) => setFilterBilled(e.target.value)}
-            className="bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+            className="bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-sage-500 focus:bg-white transition"
           >
             <option value="">All Statuses</option>
             <option value="0">Unbilled Only</option>
@@ -332,11 +372,10 @@ export default function TimeTrackerView({ setActiveTab }) {
       </div>
 
       {/* Time Logs Table */}
-      {/* Time Logs Table */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 overflow-hidden shadow-sm">
+      <div className="surface-card rounded-2xl border border-charcoal-200/90 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-stone-50 text-stone-700 uppercase font-semibold text-[10px] tracking-wider border-b border-stone-200">
+            <thead className="bg-ivory-100 text-charcoal-700 uppercase font-semibold text-[10px] tracking-wider border-b border-charcoal-200">
               <tr>
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4">Project & Client</th>
@@ -348,16 +387,16 @@ export default function TimeTrackerView({ setActiveTab }) {
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100 text-stone-700">
+            <tbody className="divide-y divide-charcoal-100 text-charcoal-700">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-stone-400">
+                  <td colSpan={8} className="py-8 text-center text-charcoal-400">
                     Loading time logs...
                   </td>
                 </tr>
               ) : timeLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-stone-400">
+                  <td colSpan={8} className="py-12 text-center text-charcoal-500">
                     No time logged yet. Start the stopwatch above or click "Manual Entry".
                   </td>
                 </tr>
@@ -367,51 +406,53 @@ export default function TimeTrackerView({ setActiveTab }) {
                   const isBilled = !!log.is_billed;
 
                   return (
-                    <tr key={log.id} className="hover:bg-amber-50/20 transition">
-                      <td className="py-3.5 px-4 font-mono text-stone-600 whitespace-nowrap">
+                    <tr key={log.id} className="hover:bg-ivory-50 transition">
+                      <td className="py-3.5 px-4 font-mono text-charcoal-600 whitespace-nowrap">
                         {dateStr}
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-stone-900">{log.project_name}</div>
-                        <div className="text-[11px] text-amber-700 font-medium">{log.client_name}</div>
+                        <div className="font-semibold text-charcoal-900">{log.project_name}</div>
+                        <div className="text-[11px] text-charcoal-500 font-medium">
+                          {log.client_name}
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4 max-w-xs">
-                        <div className="text-stone-900 truncate font-medium">
+                        <div className="text-charcoal-900 truncate font-medium">
                           {log.task_title || log.description}
                         </div>
                         {log.task_title && log.description && (
-                          <div className="text-[11px] text-stone-500 truncate">
+                          <div className="text-[11px] text-charcoal-500 truncate">
                             {log.description}
                           </div>
                         )}
                         {log.is_manual ? (
-                          <span className="text-[10px] text-amber-600 italic">Manual entry</span>
+                          <span className="text-[10px] text-amber-700 italic">Manual entry</span>
                         ) : null}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-stone-900">
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-charcoal-900">
                         {Number(log.hours || 0).toFixed(2)}h
                       </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono text-stone-500">
+                      <td className="py-3.5 px-4 text-right font-mono text-charcoal-500">
                         ${log.client_hourly_rate}/h
                       </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono font-black text-amber-600">
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-charcoal-900">
                         ${Number(log.amount || 0).toFixed(2)}
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
                         {isBilled ? (
-                          <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300">
-                            <Check className="w-3 h-3 text-amber-600" />
+                          <span className="badge-sage inline-flex items-center space-x-1">
+                            <Check className="w-3 h-3 text-sage-600" />
                             <span>Billed</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center space-x-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-800 border border-orange-200">
-                            <Clock className="w-3 h-3 text-orange-600" />
+                          <span className="badge-amber inline-flex items-center space-x-1">
+                            <Clock className="w-3 h-3 text-amber-600" />
                             <span>Unbilled</span>
                           </span>
                         )}
@@ -420,8 +461,8 @@ export default function TimeTrackerView({ setActiveTab }) {
                       <td className="py-3.5 px-4 text-right">
                         {!isBilled && (
                           <button
-                            onClick={() => handleDeleteLog(log)}
-                            className="p-1 text-stone-400 hover:text-red-600 rounded-lg hover:bg-stone-100 transition"
+                            onClick={() => setLogToDelete(log)}
+                            className="p-1 text-charcoal-400 hover:text-terracotta-600 rounded-lg hover:bg-ivory-100 transition"
                             title="Delete time log"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -437,16 +478,50 @@ export default function TimeTrackerView({ setActiveTab }) {
         </div>
       </div>
 
+      {/* Delete Confirmation Modal */}
+      {logToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal-950/40 backdrop-blur-xs">
+          <div className="surface-card rounded-2xl w-full max-w-sm p-6 shadow-dropdown border border-charcoal-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-10 h-10 rounded-xl bg-terracotta-50 border border-terracotta-200 flex items-center justify-center text-terracotta-600 mb-4">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <h3 className="text-base font-bold text-charcoal-900 font-heading mb-1">
+              Delete Time Log?
+            </h3>
+            <p className="text-xs text-charcoal-600 mb-4">
+              Are you sure you want to remove this logged entry ({Number(logToDelete.hours || 0).toFixed(2)} hrs on {logToDelete.project_name})? This cannot be undone.
+            </p>
+            <div className="flex items-center justify-end space-x-2.5">
+              <button
+                type="button"
+                onClick={() => setLogToDelete(null)}
+                className="px-3.5 py-2 text-xs font-medium text-charcoal-600 hover:text-charcoal-900 rounded-xl hover:bg-ivory-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteLog}
+                disabled={isDeleting}
+                className="px-4 py-2 text-xs font-semibold text-white bg-terracotta-600 hover:bg-terracotta-700 rounded-xl transition shadow-sm disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Log'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Manual Entry Modal */}
       {isManualModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-sm">
-          <div className="bg-white border border-stone-200 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
-            <h3 className="text-base font-bold text-stone-900 font-heading mb-4">
-              Manual Hour Logging ("I worked 3 hours yesterday")
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal-950/40 backdrop-blur-xs">
+          <div className="surface-card rounded-2xl w-full max-w-md p-6 shadow-dropdown border border-charcoal-200 relative animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="text-base font-bold text-charcoal-900 font-heading mb-4">
+              Manual Hour Logging
             </h3>
 
             {manualError && (
-              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+              <div className="mb-4 p-3 rounded-xl bg-terracotta-50 border border-terracotta-200 text-terracotta-700 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{manualError}</span>
               </div>
@@ -454,14 +529,14 @@ export default function TimeTrackerView({ setActiveTab }) {
 
             <form onSubmit={handleManualSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                <label className="block text-xs font-semibold text-charcoal-700 mb-1">
                   Project *
                 </label>
                 <select
                   required
                   value={manualFormData.project_id}
                   onChange={(e) => handleProjectSelectForManual(e.target.value)}
-                  className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+                  className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-sage-500 focus:bg-white transition"
                 >
                   <option value="">Select Project</option>
                   {projects.map((p) => (
@@ -474,7 +549,7 @@ export default function TimeTrackerView({ setActiveTab }) {
 
               {tasks.length > 0 && (
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-semibold text-charcoal-700 mb-1">
                     Related Task (Optional)
                   </label>
                   <select
@@ -482,7 +557,7 @@ export default function TimeTrackerView({ setActiveTab }) {
                     onChange={(e) =>
                       setManualFormData({ ...manualFormData, task_id: e.target.value })
                     }
-                    className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+                    className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-sage-500 focus:bg-white transition"
                   >
                     <option value="">General Work</option>
                     {tasks.map((t) => (
@@ -496,7 +571,7 @@ export default function TimeTrackerView({ setActiveTab }) {
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-1">
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">Date</label>
+                  <label className="block text-xs font-semibold text-charcoal-700 mb-1">Date</label>
                   <input
                     type="date"
                     required
@@ -504,12 +579,12 @@ export default function TimeTrackerView({ setActiveTab }) {
                     onChange={(e) =>
                       setManualFormData({ ...manualFormData, date: e.target.value })
                     }
-                    className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+                    className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-sage-500 focus:bg-white transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">Hours</label>
+                  <label className="block text-xs font-semibold text-charcoal-700 mb-1">Hours</label>
                   <input
                     type="number"
                     min="0"
@@ -518,12 +593,12 @@ export default function TimeTrackerView({ setActiveTab }) {
                     onChange={(e) =>
                       setManualFormData({ ...manualFormData, hours: e.target.value })
                     }
-                    className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white font-mono"
+                    className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-sage-500 focus:bg-white font-mono transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-semibold text-charcoal-700 mb-1">
                     Minutes
                   </label>
                   <input
@@ -535,13 +610,13 @@ export default function TimeTrackerView({ setActiveTab }) {
                     onChange={(e) =>
                       setManualFormData({ ...manualFormData, minutes: e.target.value })
                     }
-                    className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white font-mono"
+                    className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-sage-500 focus:bg-white font-mono transition"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                <label className="block text-xs font-semibold text-charcoal-700 mb-1">
                   Description / Notes
                 </label>
                 <textarea
@@ -551,22 +626,22 @@ export default function TimeTrackerView({ setActiveTab }) {
                   onChange={(e) =>
                     setManualFormData({ ...manualFormData, description: e.target.value })
                   }
-                  className="w-full bg-stone-50 border border-stone-300 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white placeholder-stone-400"
+                  className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-sage-500 focus:bg-white placeholder-charcoal-400 transition"
                 />
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-stone-200">
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-charcoal-200">
                 <button
                   type="button"
                   onClick={() => setIsManualModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-stone-500 hover:text-stone-900"
+                  className="px-4 py-2 text-xs font-medium text-charcoal-600 hover:text-charcoal-900 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isManualSubmitting}
-                  className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:via-orange-400 hover:to-red-400 text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-lg shadow-orange-500/25 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                  className="bg-charcoal-900 hover:bg-charcoal-800 text-ivory-50 text-xs font-medium px-5 py-2.5 rounded-xl transition shadow-sm disabled:opacity-50"
                 >
                   {isManualSubmitting ? 'Saving...' : 'Log Hours'}
                 </button>

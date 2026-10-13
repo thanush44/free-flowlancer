@@ -33,7 +33,7 @@ async function request(endpoint, options = {}) {
     if (!response.ok) {
       const errorText = await response.text();
       let parsed = {};
-      try { parsed = JSON.parse(errorText); } catch (e) {}
+      try { parsed = JSON.parse(errorText); } catch { /* ignore */ }
       throw new Error(parsed.error || 'Failed to download PDF');
     }
     return response.blob();

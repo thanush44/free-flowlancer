@@ -9,7 +9,6 @@ import {
   Clock,
   FileText,
   Sparkles,
-  Zap,
   Play,
   Database,
 } from 'lucide-react';

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { useAuth } from '../context/AuthContext';
 import InvoiceTemplateModal from './InvoiceTemplateModal';
 import {
-  FileText,
   Plus,
   Download,
   Eye,
@@ -11,17 +9,14 @@ import {
   CheckCircle,
   Clock,
   Sparkles,
-  Calendar,
-  DollarSign,
   AlertCircle,
   Check,
   ChevronRight,
   X,
-  Filter,
+  AlertTriangle,
 } from 'lucide-react';
 
-export default function InvoicesView({ setActiveTab }) {
-  const { user, togglePlan } = useAuth();
+export default function InvoicesView() {
   const [invoices, setInvoices] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +47,10 @@ export default function InvoicesView({ setActiveTab }) {
   const [wizardLoading, setWizardLoading] = useState(false);
   const [wizardError, setWizardError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete confirmation modal state
+  const [invoiceToDelete, setInvoiceToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -169,19 +168,17 @@ export default function InvoicesView({ setActiveTab }) {
     }
   }
 
-  async function handleDeleteInvoice(inv) {
-    if (
-      !window.confirm(
-        `Delete Invoice #${inv.invoice_number}? This will revert all associated time logs back to Unbilled status.`
-      )
-    ) {
-      return;
-    }
+  async function confirmDeleteInvoice() {
+    if (!invoiceToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.deleteInvoice(inv.id);
+      await api.deleteInvoice(invoiceToDelete.id);
+      setInvoiceToDelete(null);
       await loadData();
     } catch (err) {
       alert(err.message);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -196,14 +193,14 @@ export default function InvoicesView({ setActiveTab }) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h1 className="text-2xl font-bold text-stone-900 tracking-tight font-heading">
+            <h1 className="text-2xl font-bold text-charcoal-900 tracking-tight font-heading">
               Invoices & Billing Suite
             </h1>
-            <span className="text-xs bg-amber-50 text-amber-800 px-2.5 py-0.5 rounded-full border border-amber-300 font-semibold">
+            <span className="badge-sage font-mono text-[11px]">
               {invoices.length} Total
             </span>
           </div>
-          <p className="text-xs text-stone-500 mt-1">
+          <p className="text-xs text-charcoal-500 mt-1">
             Convert tracked unbilled hours into branded PDF invoices and monitor payment status.
           </p>
         </div>
@@ -211,58 +208,58 @@ export default function InvoicesView({ setActiveTab }) {
         <button
           onClick={openWizard}
           disabled={clients.length === 0}
-          className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-400 hover:via-orange-400 hover:to-red-400 text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-lg shadow-orange-500/25 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+          className="inline-flex items-center space-x-2 bg-charcoal-900 hover:bg-charcoal-800 text-ivory-50 text-xs font-medium px-4 py-2.5 rounded-xl transition shadow-sm disabled:opacity-50"
         >
-          <Plus className="w-4 h-4 stroke-[3]" />
+          <Plus className="w-4 h-4" />
           <span>Generate Invoice</span>
         </button>
       </div>
 
       {/* Filter and Overview Pills */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-xl border border-stone-200/90 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 surface-card p-4 rounded-xl border border-charcoal-200/90 shadow-sm">
         <div className="flex items-center space-x-2 text-xs">
           <button
             onClick={() => setFilterStatus('')}
-            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all text-xs ${
+            className={`px-3.5 py-1.5 rounded-xl font-medium transition text-xs ${
               filterStatus === ''
-                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-orange-500/20'
-                : 'text-stone-600 hover:text-stone-900 bg-stone-100 border border-stone-200'
+                ? 'bg-charcoal-900 text-ivory-50 shadow-sm'
+                : 'text-charcoal-600 hover:text-charcoal-900 bg-ivory-100 border border-charcoal-200'
             }`}
           >
             All Invoices
           </button>
           <button
             onClick={() => setFilterStatus('pending')}
-            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all text-xs ${
+            className={`px-3.5 py-1.5 rounded-xl font-medium transition text-xs ${
               filterStatus === 'pending'
-                ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20'
-                : 'text-stone-600 hover:text-stone-900 bg-stone-100 border border-stone-200'
+                ? 'bg-charcoal-900 text-ivory-50 shadow-sm'
+                : 'text-charcoal-600 hover:text-charcoal-900 bg-ivory-100 border border-charcoal-200'
             }`}
           >
             Pending
           </button>
           <button
             onClick={() => setFilterStatus('paid')}
-            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all text-xs ${
+            className={`px-3.5 py-1.5 rounded-xl font-medium transition text-xs ${
               filterStatus === 'paid'
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-md shadow-amber-500/20'
-                : 'text-stone-600 hover:text-stone-900 bg-stone-100 border border-stone-200'
+                ? 'bg-charcoal-900 text-ivory-50 shadow-sm'
+                : 'text-charcoal-600 hover:text-charcoal-900 bg-ivory-100 border border-charcoal-200'
             }`}
           >
             Paid
           </button>
         </div>
 
-        <div className="text-xs text-stone-500 font-medium">
+        <div className="text-xs text-charcoal-500 font-medium">
           Showing {filteredInvoices.length} of {invoices.length} invoices
         </div>
       </div>
 
       {/* Invoices List Table */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 overflow-hidden shadow-sm">
+      <div className="surface-card rounded-2xl border border-charcoal-200/90 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-stone-50 text-stone-700 uppercase font-semibold text-[10px] tracking-wider border-b border-stone-200">
+            <thead className="bg-ivory-100 text-charcoal-700 uppercase font-semibold text-[10px] tracking-wider border-b border-charcoal-200">
               <tr>
                 <th className="py-3 px-4">Invoice #</th>
                 <th className="py-3 px-4">Client</th>
@@ -274,17 +271,17 @@ export default function InvoicesView({ setActiveTab }) {
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100 text-stone-700">
+            <tbody className="divide-y divide-charcoal-100 text-charcoal-700">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-stone-400">
+                  <td colSpan={8} className="py-8 text-center text-charcoal-400">
                     Loading invoices...
                   </td>
                 </tr>
               ) : filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-stone-400">
-                    No invoices found. Click "Generate Invoice" or "Load Sample Data" to begin.
+                  <td colSpan={8} className="py-12 text-center text-charcoal-500">
+                    No invoices found. Click "Generate Invoice" or bill some logged hours to begin.
                   </td>
                 </tr>
               ) : (
@@ -293,39 +290,37 @@ export default function InvoicesView({ setActiveTab }) {
                   const itemsCount = (inv.items || []).length;
 
                   return (
-                    <tr key={inv.id} className="hover:bg-amber-50/20 transition">
-                      <td className="py-3.5 px-4 font-mono font-bold text-stone-900 whitespace-nowrap">
+                    <tr key={inv.id} className="hover:bg-ivory-50 transition">
+                      <td className="py-3.5 px-4 font-mono font-bold text-charcoal-900 whitespace-nowrap">
                         #{inv.invoice_number}
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-stone-900">{inv.client_name}</div>
+                        <div className="font-semibold text-charcoal-900">{inv.client_name}</div>
                         {inv.client_company && (
-                          <div className="text-[11px] text-amber-700 font-medium">{inv.client_company}</div>
+                          <div className="text-[11px] text-charcoal-500 font-medium">{inv.client_company}</div>
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 font-mono text-stone-600">{inv.issue_date}</td>
+                      <td className="py-3.5 px-4 font-mono text-charcoal-600">{inv.issue_date}</td>
 
-                      <td className="py-3.5 px-4 font-mono text-orange-700 font-medium">{inv.due_date}</td>
+                      <td className="py-3.5 px-4 font-mono text-charcoal-600 font-medium">{inv.due_date}</td>
 
-                      <td className="py-3.5 px-4 text-right text-stone-600">
+                      <td className="py-3.5 px-4 text-right text-charcoal-600">
                         {itemsCount} {itemsCount === 1 ? 'item' : 'items'}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right font-mono font-black text-amber-600 text-sm">
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-charcoal-900 text-sm">
                         ${Number(inv.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
                         <span
-                          className={`inline-flex items-center space-x-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize ${
-                            isPaid
-                              ? 'bg-amber-50 text-amber-800 border border-amber-300'
-                              : 'bg-orange-50 text-orange-800 border border-orange-200'
+                          className={`inline-flex items-center space-x-1 capitalize ${
+                            isPaid ? 'badge-sage' : 'badge-amber'
                           }`}
                         >
-                          {isPaid ? <CheckCircle className="w-3 h-3 text-amber-600" /> : <Clock className="w-3 h-3 text-orange-600" />}
+                          {isPaid ? <CheckCircle className="w-3 h-3 text-sage-600" /> : <Clock className="w-3 h-3 text-amber-600" />}
                           <span>{inv.status}</span>
                         </span>
                       </td>
@@ -334,21 +329,21 @@ export default function InvoicesView({ setActiveTab }) {
                         <div className="inline-flex items-center space-x-1.5">
                           <button
                             onClick={() => setSelectedInvoice(inv)}
-                            className="p-1.5 text-stone-500 hover:text-amber-700 rounded-lg hover:bg-stone-100 transition"
+                            className="p-1.5 text-charcoal-500 hover:text-charcoal-900 rounded-lg hover:bg-ivory-100 transition"
                             title="Preview & Print Invoice"
                           >
-                            <Eye className="w-3.5 h-3.5 text-amber-600" />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setSelectedInvoice(inv)}
-                            className="p-1.5 text-stone-500 hover:text-orange-700 rounded-lg hover:bg-stone-100 transition"
+                            className="p-1.5 text-charcoal-500 hover:text-charcoal-900 rounded-lg hover:bg-ivory-100 transition"
                             title="Download PDF"
                           >
-                            <Download className="w-3.5 h-3.5 text-orange-600" />
+                            <Download className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDeleteInvoice(inv)}
-                            className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-stone-100 transition"
+                            onClick={() => setInvoiceToDelete(inv)}
+                            className="p-1.5 text-charcoal-400 hover:text-terracotta-600 rounded-lg hover:bg-ivory-100 transition"
                             title="Delete invoice (unlocks time logs)"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -364,17 +359,51 @@ export default function InvoicesView({ setActiveTab }) {
         </div>
       </div>
 
+      {/* Delete Invoice Confirmation Modal */}
+      {invoiceToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal-950/40 backdrop-blur-xs">
+          <div className="surface-card rounded-2xl w-full max-w-sm p-6 shadow-dropdown border border-charcoal-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-10 h-10 rounded-xl bg-terracotta-50 border border-terracotta-200 flex items-center justify-center text-terracotta-600 mb-4">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <h3 className="text-base font-bold text-charcoal-900 font-heading mb-1">
+              Delete Invoice #{invoiceToDelete.invoice_number}?
+            </h3>
+            <p className="text-xs text-charcoal-600 mb-4">
+              Deleting this invoice will release all {invoiceToDelete.items?.length || 0} associated time logs back to Unbilled status so they can be re-billed if needed.
+            </p>
+            <div className="flex items-center justify-end space-x-2.5">
+              <button
+                type="button"
+                onClick={() => setInvoiceToDelete(null)}
+                className="px-3.5 py-2 text-xs font-medium text-charcoal-600 hover:text-charcoal-900 rounded-xl hover:bg-ivory-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteInvoice}
+                disabled={isDeleting}
+                className="px-4 py-2 text-xs font-semibold text-white bg-terracotta-600 hover:bg-terracotta-700 rounded-xl transition shadow-sm disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Invoice Generator Wizard Modal */}
       {isWizardOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-md overflow-y-auto">
-          <div className="bg-white border border-stone-200/90 rounded-3xl w-full max-w-2xl p-6 shadow-2xl relative my-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-charcoal-950/40 backdrop-blur-xs overflow-y-auto">
+          <div className="surface-card rounded-3xl w-full max-w-2xl p-6 shadow-dropdown border border-charcoal-200 relative my-auto animate-in fade-in zoom-in-95 duration-150">
             {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-stone-200">
+            <div className="flex items-center justify-between pb-4 border-b border-charcoal-200">
               <div>
-                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-600">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-sage-700">
                   Step {wizardStep} of 2
                 </span>
-                <h3 className="text-lg font-bold text-stone-900 font-heading">
+                <h3 className="text-lg font-bold text-charcoal-900 font-heading">
                   {wizardStep === 1
                     ? 'Create Invoice: Select Client & Scope'
                     : 'Review Billable Time & Details'}
@@ -382,15 +411,15 @@ export default function InvoicesView({ setActiveTab }) {
               </div>
               <button
                 onClick={() => setIsWizardOpen(false)}
-                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg"
+                className="text-charcoal-400 hover:text-charcoal-700 p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {wizardError && (
-              <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+              <div className="mt-4 p-3 rounded-xl bg-terracotta-50 border border-terracotta-200 text-terracotta-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-terracotta-600" />
                 <span>{wizardError}</span>
               </div>
             )}
@@ -399,13 +428,13 @@ export default function InvoicesView({ setActiveTab }) {
             {wizardStep === 1 && (
               <div className="mt-5 space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1.5">
+                  <label className="block text-xs font-semibold text-charcoal-700 mb-1.5">
                     Select Client *
                   </label>
                   <select
                     value={wizardClientId}
                     onChange={(e) => setWizardClientId(e.target.value)}
-                    className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+                    className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-sage-500 focus:bg-white transition"
                   >
                     <option value="">Select a Client</option>
                     {clients.map((c) => (
@@ -418,46 +447,46 @@ export default function InvoicesView({ setActiveTab }) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1.5">
+                    <label className="block text-xs font-semibold text-charcoal-700 mb-1.5">
                       From Date (Optional)
                     </label>
                     <input
                       type="date"
                       value={wizardStartDate}
                       onChange={(e) => setWizardStartDate(e.target.value)}
-                      className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+                      className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-sage-500 focus:bg-white transition"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1.5">
+                    <label className="block text-xs font-semibold text-charcoal-700 mb-1.5">
                       To Date (Optional)
                     </label>
                     <input
                       type="date"
                       value={wizardEndDate}
                       onChange={(e) => setWizardEndDate(e.target.value)}
-                      className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-amber-500 focus:bg-white"
+                      className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-sage-500 focus:bg-white transition"
                     />
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-amber-50 border border-amber-200/80 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
-                  <Sparkles className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                <div className="p-3.5 bg-ivory-100 border border-charcoal-200 rounded-xl text-xs text-charcoal-700 flex items-start gap-2.5">
+                  <Sparkles className="w-4 h-4 shrink-0 text-amber-700 mt-0.5" />
                   <p>
-                    FreelanceFlow will automatically query all unbilled stopwatch & manual hours
+                    FreelanceFlow will query all unbilled stopwatch & manual hours
                     logged for this client and format them into itemized billable rows.
                   </p>
                 </div>
 
-                <div className="flex justify-end pt-4 border-t border-stone-200">
+                <div className="flex justify-end pt-4 border-t border-charcoal-200">
                   <button
                     onClick={fetchUnbilledForWizard}
                     disabled={wizardLoading || !wizardClientId}
-                    className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-lg shadow-orange-500/25 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                    className="inline-flex items-center space-x-2 bg-charcoal-900 hover:bg-charcoal-800 text-ivory-50 text-xs font-medium px-5 py-2.5 rounded-xl transition shadow-sm disabled:opacity-50"
                   >
                     <span>{wizardLoading ? 'Fetching Time Logs...' : 'Next: Review Logs'}</span>
-                    <ChevronRight className="w-4 h-4 stroke-[3]" />
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -468,13 +497,13 @@ export default function InvoicesView({ setActiveTab }) {
               <div className="mt-5 space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-semibold text-stone-700">
+                    <label className="text-xs font-semibold text-charcoal-700">
                       Unbilled Time Logs ({selectedLogIds.length} of {unbilledLogs.length} selected)
                     </label>
                     {unbilledLogs.length > 0 && (
                       <button
                         onClick={selectAllLogs}
-                        className="text-[11px] text-amber-600 hover:underline font-semibold"
+                        className="text-[11px] text-sage-700 hover:text-sage-800 font-semibold"
                       >
                         {selectedLogIds.length === unbilledLogs.length
                           ? 'Deselect All'
@@ -484,13 +513,13 @@ export default function InvoicesView({ setActiveTab }) {
                   </div>
 
                   {unbilledLogs.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-stone-500 bg-stone-50 rounded-xl border border-stone-200">
+                    <div className="p-6 text-center text-xs text-charcoal-500 bg-ivory-100 rounded-xl border border-charcoal-200">
                       No unbilled time logs found for this client and date range.
                     </div>
                   ) : (
-                    <div className="border border-stone-200 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
+                    <div className="border border-charcoal-200 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-stone-100 text-stone-700 text-[10px] uppercase font-bold border-b border-stone-200">
+                        <thead className="bg-ivory-100 text-charcoal-700 text-[10px] uppercase font-bold border-b border-charcoal-200">
                           <tr>
                             <th className="py-2.5 px-3 w-8"></th>
                             <th className="py-2.5 px-3">Date</th>
@@ -499,7 +528,7 @@ export default function InvoicesView({ setActiveTab }) {
                             <th className="py-2.5 px-3 text-right">Amount</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-stone-200">
+                        <tbody className="divide-y divide-charcoal-100">
                           {unbilledLogs.map((log) => {
                             const isSelected = selectedLogIds.includes(log.id);
                             return (
@@ -507,7 +536,7 @@ export default function InvoicesView({ setActiveTab }) {
                                 key={log.id}
                                 onClick={() => toggleLogSelection(log.id)}
                                 className={`cursor-pointer transition ${
-                                  isSelected ? 'bg-amber-50/80' : 'hover:bg-stone-50'
+                                  isSelected ? 'bg-sage-50/70' : 'hover:bg-ivory-50'
                                 }`}
                               >
                                 <td className="py-2.5 px-3">
@@ -515,17 +544,17 @@ export default function InvoicesView({ setActiveTab }) {
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={() => {}}
-                                    className="rounded border-stone-300 text-amber-600 focus:ring-0"
+                                    className="rounded border-charcoal-300 text-sage-600 focus:ring-0"
                                   />
                                 </td>
-                                <td className="py-2.5 px-3 font-mono text-stone-500">{log.date}</td>
-                                <td className="py-2.5 px-3 truncate max-w-xs text-stone-800 font-medium">
+                                <td className="py-2.5 px-3 font-mono text-charcoal-500">{log.date}</td>
+                                <td className="py-2.5 px-3 truncate max-w-xs text-charcoal-800 font-medium">
                                   {log.project_name}: {log.description}
                                 </td>
-                                <td className="py-2.5 px-3 text-right font-mono font-medium text-stone-900">
+                                <td className="py-2.5 px-3 text-right font-mono font-medium text-charcoal-900">
                                   {Number(log.hours).toFixed(2)}h
                                 </td>
-                                <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-600">
+                                <td className="py-2.5 px-3 text-right font-mono font-bold text-charcoal-900">
                                   ${Number(log.amount).toFixed(2)}
                                 </td>
                               </tr>
@@ -540,7 +569,7 @@ export default function InvoicesView({ setActiveTab }) {
                 {/* Invoice Meta Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    <label className="block text-xs font-semibold text-charcoal-700 mb-1">
                       Invoice #
                     </label>
                     <input
@@ -548,12 +577,12 @@ export default function InvoicesView({ setActiveTab }) {
                       required
                       value={invoiceNumber}
                       onChange={(e) => setInvoiceNumber(e.target.value)}
-                      className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:bg-white font-mono"
+                      className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-sage-500 focus:bg-white font-mono transition"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    <label className="block text-xs font-semibold text-charcoal-700 mb-1">
                       Due Date
                     </label>
                     <input
@@ -561,12 +590,12 @@ export default function InvoicesView({ setActiveTab }) {
                       required
                       value={dueDate}
                       onChange={(e) => setDueDate(e.target.value)}
-                      className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:bg-white"
+                      className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-sage-500 focus:bg-white transition"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    <label className="block text-xs font-semibold text-charcoal-700 mb-1">
                       Tax Rate (%)
                     </label>
                     <input
@@ -576,49 +605,49 @@ export default function InvoicesView({ setActiveTab }) {
                       step="0.5"
                       value={taxRate}
                       onChange={(e) => setTaxRate(e.target.value)}
-                      className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:bg-white font-mono"
+                      className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-sage-500 focus:bg-white font-mono transition"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-semibold text-charcoal-700 mb-1">
                     Notes & Terms
                   </label>
                   <textarea
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full bg-stone-50 border border-stone-200 text-stone-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:bg-white placeholder-stone-400"
+                    className="w-full bg-ivory-50 border border-charcoal-200 text-charcoal-900 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-sage-500 focus:bg-white placeholder-charcoal-400 transition"
                   />
                 </div>
 
                 {/* Subtotal & Total Preview */}
-                <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 flex items-center justify-between text-xs">
+                <div className="p-3.5 bg-ivory-100 rounded-xl border border-charcoal-200 flex items-center justify-between text-xs">
                   <div className="space-y-0.5">
-                    <span className="text-stone-600 block font-medium">Subtotal: ${wizardSubtotal.toFixed(2)}</span>
+                    <span className="text-charcoal-600 block font-medium">Subtotal: ${wizardSubtotal.toFixed(2)}</span>
                     {taxRate > 0 && (
-                      <span className="text-stone-600 block font-medium">
+                      <span className="text-charcoal-600 block font-medium">
                         Tax ({taxRate}%): ${wizardTaxAmount.toFixed(2)}
                       </span>
                     )}
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-amber-700 block uppercase font-bold">
+                    <span className="text-[10px] text-charcoal-500 block uppercase font-bold">
                       Total Invoice Amount
                     </span>
-                    <span className="text-lg font-bold text-amber-600 font-mono">
+                    <span className="text-base font-bold text-charcoal-900 font-mono">
                       ${wizardTotalAmount.toFixed(2)}
                     </span>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-between pt-4 border-t border-stone-200">
+                <div className="flex items-center justify-between pt-4 border-t border-charcoal-200">
                   <button
                     type="button"
                     onClick={() => setWizardStep(1)}
-                    className="text-xs font-semibold text-stone-500 hover:text-stone-800 transition"
+                    className="text-xs font-medium text-charcoal-600 hover:text-charcoal-900 transition"
                   >
                     Back
                   </button>
@@ -626,10 +655,10 @@ export default function InvoicesView({ setActiveTab }) {
                   <button
                     onClick={handleCreateInvoice}
                     disabled={isSubmitting || selectedItems.length === 0}
-                    className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:via-orange-600 hover:to-red-600 text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-lg shadow-orange-500/25 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                    className="inline-flex items-center space-x-2 bg-charcoal-900 hover:bg-charcoal-800 text-ivory-50 text-xs font-medium px-5 py-2.5 rounded-xl transition shadow-sm disabled:opacity-50"
                   >
-                    <Check className="w-4 h-4 stroke-[3]" />
-                    <span>{isSubmitting ? 'Creating...' : 'Generate & Lock Invoicing'}</span>
+                    <Check className="w-4 h-4" />
+                    <span>{isSubmitting ? 'Creating...' : 'Generate & Lock Invoice'}</span>
                   </button>
                 </div>
               </div>
