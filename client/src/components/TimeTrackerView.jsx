@@ -13,6 +13,7 @@ import {
   FileText,
   AlertTriangle,
 } from 'lucide-react';
+import { formatINR, formatRateINR } from '../utils/currency';
 
 export default function TimeTrackerView({ setActiveTab }) {
   const {
@@ -186,7 +187,7 @@ export default function TimeTrackerView({ setActiveTab }) {
               title="Jump to invoices to bill this time"
             >
               <FileText className="w-3.5 h-3.5 text-amber-700" />
-              <span>Draft Invoice (${Number(totalUnbilled).toLocaleString()})</span>
+              <span>Draft Invoice ({formatINR(totalUnbilled)})</span>
             </button>
           )}
 
@@ -334,7 +335,7 @@ export default function TimeTrackerView({ setActiveTab }) {
           <div>
             <span className="text-charcoal-500 block font-medium">Unbilled Value</span>
             <span className="text-sm font-bold text-amber-700 font-mono">
-              ${Number(totalUnbilled).toLocaleString()}
+              {formatINR(totalUnbilled)}
             </span>
           </div>
         </div>
@@ -437,11 +438,11 @@ export default function TimeTrackerView({ setActiveTab }) {
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-mono text-charcoal-500">
-                        ${log.client_hourly_rate}/h
+                        {formatRateINR(log.client_hourly_rate)}
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-mono font-bold text-charcoal-900">
-                        ${Number(log.amount || 0).toFixed(2)}
+                        {formatINR(log.amount)}
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
@@ -541,7 +542,7 @@ export default function TimeTrackerView({ setActiveTab }) {
                   <option value="">Select Project</option>
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} ({p.client_name}) - ${p.effective_rate || 50}/hr
+                      {p.name} ({p.client_name}) - {formatRateINR(p.effective_rate || 1500)}
                     </option>
                   ))}
                 </select>

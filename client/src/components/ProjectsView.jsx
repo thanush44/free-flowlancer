@@ -13,6 +13,7 @@ import {
   Check,
   AlertCircle,
 } from 'lucide-react';
+import { formatINR, formatRateINR } from '../utils/currency';
 
 export default function ProjectsView({ onStartStopwatch }) {
   const [projects, setProjects] = useState([]);
@@ -318,8 +319,8 @@ export default function ProjectsView({ onStartStopwatch }) {
                         </div>
 
                         <div className="mt-2 flex items-center justify-between text-[11px] text-[#78716c] font-mono">
-                          <span className="text-[#1c1917] font-semibold">${Number(proj.spent_amount || 0).toLocaleString()} spent</span>
-                          <span>Budget: ${Number(proj.budget || 0).toLocaleString()}</span>
+                          <span className="text-[#1c1917] font-semibold">{formatINR(proj.spent_amount)} spent</span>
+                          <span>Budget: {formatINR(proj.budget)}</span>
                         </div>
                       </div>
 
@@ -575,7 +576,7 @@ export default function ProjectsView({ onStartStopwatch }) {
                   <option value="">Select a Client</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} {c.company ? `(${c.company})` : ''} - ${c.default_hourly_rate}/hr
+                      {c.name} {c.company ? `(${c.company})` : ''} - {formatRateINR(c.default_hourly_rate)}
                     </option>
                   ))}
                 </select>
@@ -615,7 +616,7 @@ export default function ProjectsView({ onStartStopwatch }) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#44403c] mb-1">
-                    Budget ($) *
+                    Budget (₹) *
                   </label>
                   <input
                     type="number"

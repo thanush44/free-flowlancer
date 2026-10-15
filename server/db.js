@@ -1,7 +1,27 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
-const dbPath = path.resolve(__dirname, 'freelanceflow.db');
+// Ensure dedicated data directory exists
+const dataDir = path.resolve(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Persistent database in server/data/freelanceflow.db
+const dbPath = path.join(dataDir, 'freelanceflow.db');
+const legacyDbPath = path.resolve(__dirname, 'freelanceflow.db');
+
+// Safe migration: preserve legacy database records if present and target doesn't exist
+if (!fs.existsSync(dbPath) && fs.existsSync(legacyDbPath)) {
+  try {
+    fs.copyFileSync(legacyDbPath, dbPath);
+    console.log(`[DB Migration] Safely copied legacy database records to ${dbPath}`);
+  } catch (copyErr) {
+    console.error('[DB Migration] Warning copying legacy database:', copyErr.message);
+  }
+}
+
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error connecting to SQLite database:', err.message);
@@ -38,8 +58,23 @@ db.allAsync = function (sql, params = []) {
   });
 };
 
-// Initialize schema
+// Safe column addition helper for incremental migrations
+async function ensureColumnExists(tableName, columnName, columnDefinition) {
+  try {
+    const tableInfo = await db.allAsync(`PRAGMA table_info(${tableName});`);
+    const exists = tableInfo.some((col) => col.name === columnName);
+    if (!exists) {
+      await db.runAsync(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition};`);
+      console.log(`[DB Migration] Added column ${columnName} to ${tableName}`);
+    }
+  } catch (err) {
+    console.warn(`[DB Migration] Note on column ${columnName} in ${tableName}:`, err.message);
+  }
+}
+
+// Initialize schema, foreign keys, incremental migrations, and indexes
 async function initDatabase() {
+  // Enforce foreign key constraints
   await db.runAsync('PRAGMA foreign_keys = ON;');
 
   // Users table
@@ -67,9 +102,18 @@ async function initDatabase() {
       default_hourly_rate REAL DEFAULT 65.0,
       address TEXT,
       notes TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // Incremental migrations in case table existed from previous version
+  await ensureColumnExists('clients', 'updated_at', 'DATETIME');
+  await ensureColumnExists('clients', 'notes', 'TEXT');
+  await ensureColumnExists('clients', 'address', 'TEXT');
+  await ensureColumnExists('clients', 'default_hourly_rate', 'REAL DEFAULT 65.0');
+  await ensureColumnExists('users', 'hourly_rate', 'REAL DEFAULT 50.0');
+  await ensureColumnExists('users', 'plan', "TEXT DEFAULT 'pro'");
 
   // Projects table (relational: client -> projects)
   await db.runAsync(`
@@ -138,10 +182,34 @@ async function initDatabase() {
     );
   `);
 
-  console.log('Database tables verified and ready.');
+  // Relational and search indexes
+  await db.runAsync('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);');
+  await db.runAsync('CREATE INDEX IF NOT EXISTS idx_clients_user_id ON clients(user_id);');
+  await db.runAsync('CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);');
+  await db.runAsync('CREATE INDEX IF NOT EXISTS idx_clients_company ON clients(company);');
+  await db.runAsync('CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);');
+  await db.runAsync('CREATE INDEX IF NOT EXISTS idx_projects_user_client ON projects(user_id, client_id);');
+  await db.runAsync('CREATE INDEX IF NOT EXISTS idx_tasks_user_project ON tasks(user_id, project_id);');
+  await db.runAsync('CREATE INDEX IF NOT EXISTS idx_timelogs_user_project ON time_logs(user_id, project_id);');
+  await db.runAsync('CREATE INDEX IF NOT EXISTS idx_invoices_user_client ON invoices(user_id, client_id);');
+
+  console.log('Database tables, migrations, and indexes verified and ready.');
+}
+
+// Close database connection cleanly (useful for tests and shutdowns)
+function closeDatabase() {
+  return new Promise((resolve, reject) => {
+    db.close((err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
 }
 
 module.exports = {
   db,
+  dbPath,
   initDatabase,
+  closeDatabase,
+  ensureColumnExists,
 };

@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
+import { formatINR, formatRateINR } from '../utils/currency';
 import {
   Users,
   Plus,
@@ -14,42 +16,96 @@ import {
   Trash2,
   X,
   Search,
+  CheckCircle2,
+  MapPin,
 } from 'lucide-react';
 
 export default function ClientsView({ setActiveTab }) {
   const { user, togglePlan } = useAuth();
+  const { socket } = useSocket();
+
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [freemiumNotice, setFreemiumNotice] = useState(null);
   const [clientToDelete, setClientToDelete] = useState(null);
+  const [successToast, setSuccessToast] = useState('');
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     company: '',
-    default_hourly_rate: 65,
+    default_hourly_rate: 1500,
     address: '',
     notes: '',
   });
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    loadClients();
-  }, []);
-
-  async function loadClients() {
+  const loadClients = useCallback(async (query = '') => {
     try {
-      const res = await api.getClients();
+      setLoadError('');
+      const res = await api.getClients(query);
       setClients(res.clients || []);
     } catch (err) {
       console.error('Failed to load clients:', err);
+      setLoadError(err.message || 'Failed to load client directory');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadClients(searchTerm);
+  }, [loadClients, searchTerm]);
+
+  // Real-time synchronization via Socket.IO
+  useEffect(() => {
+    if (!socket) return;
+
+    function handleClientCreated(data) {
+      if (data?.client) {
+        setClients((prev) => {
+          if (prev.some((c) => c.id === data.client.id)) return prev;
+          return [data.client, ...prev];
+        });
+      }
+    }
+
+    function handleClientUpdated(data) {
+      if (data?.client) {
+        setClients((prev) =>
+          prev.map((c) => (c.id === data.client.id ? { ...c, ...data.client } : c))
+        );
+      }
+    }
+
+    function handleClientDeleted(data) {
+      if (data?.id) {
+        setClients((prev) => prev.filter((c) => c.id !== data.id));
+      }
+    }
+
+    socket.on('client-created', handleClientCreated);
+    socket.on('client-updated', handleClientUpdated);
+    socket.on('client-deleted', handleClientDeleted);
+
+    return () => {
+      socket.off('client-created', handleClientCreated);
+      socket.off('client-updated', handleClientUpdated);
+      socket.off('client-deleted', handleClientDeleted);
+    };
+  }, [socket]);
+
+  function triggerSuccess(msg) {
+    setSuccessToast(msg);
+    setTimeout(() => setSuccessToast(''), 4000);
   }
 
   function openCreateModal() {
@@ -67,7 +123,7 @@ export default function ClientsView({ setActiveTab }) {
       email: '',
       phone: '',
       company: '',
-      default_hourly_rate: user?.hourly_rate || 65,
+      default_hourly_rate: user?.hourly_rate || 1500,
       address: '',
       notes: '',
     });
@@ -82,7 +138,7 @@ export default function ClientsView({ setActiveTab }) {
       email: client.email || '',
       phone: client.phone || '',
       company: client.company || '',
-      default_hourly_rate: client.default_hourly_rate || 65,
+      default_hourly_rate: client.default_hourly_rate || 1500,
       address: client.address || '',
       notes: client.notes || '',
     });
@@ -93,16 +149,37 @@ export default function ClientsView({ setActiveTab }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setFormError('');
+
+    // Frontend validation
+    if (!formData.name || !formData.name.trim()) {
+      setFormError('Client name is required');
+      return;
+    }
+
+    const rateNum = parseFloat(formData.default_hourly_rate);
+    if (isNaN(rateNum) || rateNum < 0) {
+      setFormError('Default hourly rate cannot be negative');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      const payload = {
+        ...formData,
+        name: formData.name.trim(),
+        default_hourly_rate: Math.round(rateNum * 100) / 100,
+      };
+
       if (editingClient) {
-        await api.updateClient(editingClient.id, formData);
+        await api.updateClient(editingClient.id, payload);
+        triggerSuccess(`Updated client "${payload.name}" successfully!`);
       } else {
-        await api.createClient(formData);
+        await api.createClient(payload);
+        triggerSuccess(`Client "${payload.name}" created and saved to SQLite!`);
       }
       setIsModalOpen(false);
-      await loadClients();
+      await loadClients(searchTerm);
     } catch (err) {
       if (err.data && err.data.limitReached) {
         setFreemiumNotice(err.data.error);
@@ -117,12 +194,17 @@ export default function ClientsView({ setActiveTab }) {
 
   async function confirmDeleteClient() {
     if (!clientToDelete) return;
+    setIsDeleting(true);
     try {
+      const name = clientToDelete.name;
       await api.deleteClient(clientToDelete.id);
       setClientToDelete(null);
-      await loadClients();
+      triggerSuccess(`Deleted client "${name}" successfully.`);
+      await loadClients(searchTerm);
     } catch (err) {
       alert(err.message || 'Failed to delete client');
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -135,6 +217,14 @@ export default function ClientsView({ setActiveTab }) {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {successToast && (
+        <div className="p-3.5 rounded-xl bg-[#f4f7f4] border border-[#cedece] text-[#243327] text-xs flex items-center gap-2 shadow-subtle transition-all">
+          <CheckCircle2 className="w-4 h-4 text-[#4d6b53] shrink-0" />
+          <span className="font-medium">{successToast}</span>
+        </div>
+      )}
+
       {/* Header and Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -147,7 +237,7 @@ export default function ClientsView({ setActiveTab }) {
             </span>
           </div>
           <p className="text-xs text-[#78716c] mt-1">
-            Directory of active clients, contract billing rates, and unbilled account balances.
+            Directory of active clients, contract billing rates in INR, and unbilled work balances.
           </p>
         </div>
 
@@ -212,17 +302,46 @@ export default function ClientsView({ setActiveTab }) {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl pl-10 pr-4 py-2 focus:outline-none focus:border-[#b45309] shadow-subtle placeholder-[#a8a29e]"
         />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a8a29e] hover:text-[#1c1917]"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
+
+      {/* Load error state */}
+      {loadError && (
+        <div className="p-4 bg-[#fdf6f4] border border-[#f5d3ca] rounded-2xl text-xs text-[#86341f] flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 text-[#c05638] shrink-0" />
+            <span>{loadError}</span>
+          </div>
+          <button
+            onClick={() => loadClients(searchTerm)}
+            className="px-3 py-1 bg-white border border-[#f5d3ca] rounded-lg text-xs font-semibold hover:bg-[#faeae5] transition"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Clients Cards Grid */}
       {loading ? (
-        <div className="text-center py-12 text-[#78716c] text-xs">Loading client directory...</div>
+        <div className="text-center py-12 text-[#78716c] text-xs flex flex-col items-center justify-center space-y-2">
+          <div className="w-7 h-7 border-2 border-[#b45309] border-t-transparent rounded-full animate-spin"></div>
+          <span>Loading client directory from SQLite...</span>
+        </div>
       ) : filteredClients.length === 0 ? (
         <div className="text-center py-14 bg-white rounded-2xl border border-[#e8e1d3] p-8 shadow-subtle">
           <Users className="w-10 h-10 text-[#a8a29e] mx-auto mb-2.5 opacity-80" />
           <h3 className="text-sm font-semibold text-[#1c1917]">No clients found</h3>
           <p className="text-xs text-[#78716c] mt-1 max-w-sm mx-auto">
-            {searchTerm ? 'No clients match your filter criteria.' : 'Get started by adding your first client or use "Sample Data" to explore.'}
+            {searchTerm
+              ? `No clients match "${searchTerm}".`
+              : 'Get started by adding your first client or use "Sample Data" to explore.'}
           </p>
           <button
             onClick={openCreateModal}
@@ -254,7 +373,7 @@ export default function ClientsView({ setActiveTab }) {
                     )}
                   </div>
                   <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-lg bg-[#f7f4ee] text-[#1c1917] border border-[#e8e1d3] shrink-0">
-                    ${client.default_hourly_rate}/hr
+                    {formatRateINR(client.default_hourly_rate)}
                   </span>
                 </div>
 
@@ -272,6 +391,12 @@ export default function ClientsView({ setActiveTab }) {
                       <span className="text-[#57534e] font-mono text-[11px]">{client.phone}</span>
                     </div>
                   )}
+                  {client.address && (
+                    <div className="flex items-center gap-2 truncate text-[11px] text-[#78716c]">
+                      <MapPin className="w-3.5 h-3.5 text-[#a8a29e] shrink-0" />
+                      <span className="truncate">{client.address}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Metrics pill */}
@@ -285,7 +410,7 @@ export default function ClientsView({ setActiveTab }) {
                   <div>
                     <span className="text-[10px] text-[#a8a29e] block uppercase font-medium">Unbilled Balance</span>
                     <span className="font-semibold text-[#b45309] font-mono">
-                      ${Number(client.unbilled_amount || 0).toLocaleString()}
+                      {formatINR(client.unbilled_amount || 0)}
                     </span>
                   </div>
                 </div>
@@ -344,6 +469,7 @@ export default function ClientsView({ setActiveTab }) {
             <div className="mt-5 flex items-center justify-end space-x-2 pt-3 border-t border-[#e8e1d3]">
               <button
                 type="button"
+                disabled={isDeleting}
                 onClick={() => setClientToDelete(null)}
                 className="px-3.5 py-2 text-xs font-semibold text-[#57534e] hover:text-[#1c1917] rounded-xl hover:bg-[#efe9de] transition"
               >
@@ -351,10 +477,11 @@ export default function ClientsView({ setActiveTab }) {
               </button>
               <button
                 type="button"
+                disabled={isDeleting}
                 onClick={confirmDeleteClient}
-                className="px-4 py-2 text-xs font-semibold text-white bg-[#c05638] hover:bg-[#a74328] rounded-xl shadow-subtle transition"
+                className="px-4 py-2 text-xs font-semibold text-white bg-[#c05638] hover:bg-[#a74328] rounded-xl shadow-subtle transition disabled:opacity-50"
               >
-                Confirm Delete
+                {isDeleting ? 'Deleting...' : 'Confirm Delete'}
               </button>
             </div>
           </div>
@@ -412,12 +539,12 @@ export default function ClientsView({ setActiveTab }) {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#44403c] mb-1">
-                    Default Hourly Rate ($/hr) *
+                    Default Hourly Rate (₹/hr) *
                   </label>
                   <input
                     type="number"
                     min="0"
-                    step="0.5"
+                    step="50"
                     required
                     value={formData.default_hourly_rate}
                     onChange={(e) =>
@@ -443,7 +570,7 @@ export default function ClientsView({ setActiveTab }) {
                   <label className="block text-xs font-semibold text-[#44403c] mb-1">Phone</label>
                   <input
                     type="text"
-                    placeholder="+1 (555) 000-0000"
+                    placeholder="+91 98765 43210"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309] placeholder-[#a8a29e]"
@@ -455,9 +582,20 @@ export default function ClientsView({ setActiveTab }) {
                 <label className="block text-xs font-semibold text-[#44403c] mb-1">Billing Address</label>
                 <input
                   type="text"
-                  placeholder="Street, City, State, Country"
+                  placeholder="Street, City, State, PIN"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309] placeholder-[#a8a29e]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#44403c] mb-1">Internal Notes</label>
+                <textarea
+                  rows="2"
+                  placeholder="Billing terms, retainer agreements, client preferences..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="w-full bg-white border border-[#e8e1d3] text-[#1c1917] text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#b45309] placeholder-[#a8a29e]"
                 />
               </div>
@@ -485,4 +623,3 @@ export default function ClientsView({ setActiveTab }) {
     </div>
   );
 }
-

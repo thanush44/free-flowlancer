@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { formatINR } from '../utils/currency';
 import {
   X,
   Download,
@@ -189,7 +190,7 @@ export default function InvoiceTemplateModal({ invoice, onClose, onStatusUpdated
                 <span className="font-semibold text-charcoal-900">Method:</span> Direct Wire / Stripe
               </p>
               <p className="text-charcoal-600">
-                <span className="font-semibold text-charcoal-900">Currency:</span> USD ($)
+                <span className="font-semibold text-charcoal-900">Currency:</span> INR (₹)
               </p>
             </div>
 
@@ -241,10 +242,10 @@ export default function InvoiceTemplateModal({ invoice, onClose, onStatusUpdated
                         {Number(item.hours || 0).toFixed(2)}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-charcoal-500">
-                        ${Number(item.rate || 0).toFixed(2)}
+                        {formatINR(item.rate || 0)}
                       </td>
                       <td className="py-3 px-4 text-right font-mono font-semibold text-charcoal-900">
-                        ${Number(item.amount || 0).toFixed(2)}
+                        {formatINR(item.amount || 0)}
                       </td>
                     </tr>
                   ))
@@ -268,20 +269,20 @@ export default function InvoiceTemplateModal({ invoice, onClose, onStatusUpdated
             <div className="space-y-2 text-right">
               <div className="flex justify-between py-1 text-charcoal-600 border-b border-charcoal-100">
                 <span>Subtotal:</span>
-                <span className="font-mono font-semibold">${Number(invoice.subtotal).toFixed(2)}</span>
+                <span className="font-mono font-semibold">{formatINR(invoice.subtotal || 0)}</span>
               </div>
               {invoice.tax_rate > 0 && (
                 <div className="flex justify-between py-1 text-charcoal-600 border-b border-charcoal-100">
                   <span>Tax ({invoice.tax_rate}%):</span>
                   <span className="font-mono font-semibold">
-                    ${Number(invoice.tax_amount).toFixed(2)}
+                    {formatINR(invoice.tax_amount || 0)}
                   </span>
                 </div>
               )}
               <div className="flex justify-between py-2 text-base font-bold text-charcoal-900 border-t-2 border-charcoal-900">
                 <span>Total Due:</span>
                 <span className="font-mono font-extrabold text-charcoal-900 text-lg">
-                  ${Number(invoice.total_amount).toFixed(2)}
+                  {formatINR(invoice.total_amount || 0)}
                 </span>
               </div>
             </div>

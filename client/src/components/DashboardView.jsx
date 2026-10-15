@@ -22,6 +22,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { formatINR, formatINRCompact } from '../utils/currency';
 
 export default function DashboardView({
   setActiveTab,
@@ -162,7 +163,7 @@ export default function DashboardView({
               {summary.pending_invoices || 0}
             </span>
             <span className="text-[11px] font-mono font-semibold text-[#c05638]">
-              ${Number(summary.outstanding_amount || 0).toLocaleString()} unpaid
+              {formatINR(summary.outstanding_amount)} unpaid
             </span>
           </div>
         </div>
@@ -183,7 +184,7 @@ export default function DashboardView({
               {Number(summary.unbilled_hours || 0).toFixed(1)}h
             </span>
             <span className="text-[11px] font-mono font-medium text-[#57534e]">
-              &asymp; ${Number(summary.unbilled_amount || 0).toLocaleString()}
+              &asymp; {formatINR(summary.unbilled_amount)}
             </span>
           </div>
         </div>
@@ -198,7 +199,7 @@ export default function DashboardView({
           </div>
           <div className="mt-3 flex items-baseline justify-between">
             <span className="text-2xl sm:text-3xl font-bold text-[#1c1917] tracking-tight font-mono">
-              ${Number(summary.total_revenue || 0).toLocaleString()}
+              {formatINR(summary.total_revenue)}
             </span>
             <span className="text-[10px] font-bold text-[#304434] bg-[#f4f7f4] border border-[#cedece] px-2 py-0.5 rounded-md uppercase">
               Paid in full
@@ -221,18 +222,18 @@ export default function DashboardView({
               </p>
             </div>
             <span className="text-[11px] bg-[#f7f4ee] text-[#57534e] px-2.5 py-1 rounded-lg border border-[#e8e1d3] font-mono font-medium">
-              USD ($)
+              INR (₹)
             </span>
           </div>
 
           <div className="h-64 sm:h-72 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 5, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e8e1d3" opacity={0.7} />
                 <XAxis dataKey="month" stroke="#78716c" fontSize={11} tickLine={false} />
-                <YAxis stroke="#78716c" fontSize={11} tickLine={false} tickFormatter={(val) => `$${val}`} />
+                <YAxis stroke="#78716c" fontSize={11} tickLine={false} tickFormatter={(val) => formatINRCompact(val)} />
                 <Tooltip
-                  formatter={(value) => [`$${Number(value).toLocaleString()}`, '']}
+                  formatter={(value) => [formatINR(value), '']}
                   contentStyle={{
                     backgroundColor: '#ffffff',
                     borderColor: '#e8e1d3',
@@ -369,8 +370,8 @@ export default function DashboardView({
                   </div>
 
                   <div className="mt-2 flex items-center justify-between text-[11px] text-[#78716c] font-mono">
-                    <span className="text-[#1c1917] font-semibold">${Number(p.spent || 0).toLocaleString()} spent</span>
-                    <span>Budget: ${Number(p.budget || 0).toLocaleString()}</span>
+                    <span className="text-[#1c1917] font-semibold">{formatINR(p.spent)} spent</span>
+                    <span>Budget: {formatINR(p.budget)}</span>
                   </div>
                 </div>
               );

@@ -4,6 +4,16 @@ const PDFDocument = require('pdfkit');
 const { db } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 
+const inrNumberFormatter = new Intl.NumberFormat('en-IN', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function formatINRPdf(amount) {
+  const num = typeof amount === 'number' ? amount : parseFloat(amount) || 0;
+  return `INR ${inrNumberFormatter.format(num)}`;
+}
+
 router.use(authenticateToken);
 
 // 1. Fetch unbilled logs for a client (and optional date range)
@@ -410,10 +420,10 @@ router.get('/:id/pdf', async (req, res) => {
     doc.rect(45, tableTop, 505, 24).fill(darkNavy);
     doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(9);
     doc.text('ITEM / SERVICE', 55, tableTop + 7);
-    doc.text('DATE', 280, tableTop + 7);
-    doc.text('HOURS', 355, tableTop + 7, { align: 'right', width: 45 });
-    doc.text('RATE', 420, tableTop + 7, { align: 'right', width: 45 });
-    doc.text('AMOUNT', 485, tableTop + 7, { align: 'right', width: 55 });
+    doc.text('DATE', 255, tableTop + 7);
+    doc.text('HOURS', 320, tableTop + 7, { align: 'right', width: 45 });
+    doc.text('RATE', 375, tableTop + 7, { align: 'right', width: 80 });
+    doc.text('AMOUNT', 460, tableTop + 7, { align: 'right', width: 85 });
 
     let currentY = tableTop + 26;
     doc.font('Helvetica').fontSize(9).fillColor('#334155');
@@ -431,14 +441,14 @@ router.get('/:id/pdf', async (req, res) => {
 
       doc.fillColor(secondaryColor).font('Helvetica-Bold');
       const title = item.project_name ? `${item.project_name} - ${item.task_title || item.description}` : item.description;
-      doc.text(title.slice(0, 42), 55, currentY + 3);
+      doc.text(title.slice(0, 38), 55, currentY + 3);
 
       doc.font('Helvetica').fillColor(textGray);
-      doc.text(item.date || '', 280, currentY + 3);
-      doc.text(Number(item.hours || 0).toFixed(2), 355, currentY + 3, { align: 'right', width: 45 });
-      doc.text(`$${Number(item.rate || 0).toFixed(2)}`, 420, currentY + 3, { align: 'right', width: 45 });
+      doc.text(item.date || '', 255, currentY + 3);
+      doc.text(Number(item.hours || 0).toFixed(2), 320, currentY + 3, { align: 'right', width: 45 });
+      doc.text(formatINRPdf(item.rate), 375, currentY + 3, { align: 'right', width: 80 });
       doc.fillColor(secondaryColor).font('Helvetica-Bold');
-      doc.text(`$${Number(item.amount || 0).toFixed(2)}`, 485, currentY + 3, { align: 'right', width: 55 });
+      doc.text(formatINRPdf(item.amount), 460, currentY + 3, { align: 'right', width: 85 });
 
       currentY += 22;
     });
@@ -447,18 +457,18 @@ router.get('/:id/pdf', async (req, res) => {
 
     // Summary Box
     currentY += 16;
-    const summaryX = 350;
+    const summaryX = 320;
     doc.font('Helvetica').fontSize(9).fillColor(textGray).text('Subtotal:', summaryX, currentY);
-    doc.font('Helvetica-Bold').fillColor(secondaryColor).text(`$${Number(invoice.subtotal).toFixed(2)}`, 485, currentY, { align: 'right', width: 55 });
+    doc.font('Helvetica-Bold').fillColor(secondaryColor).text(formatINRPdf(invoice.subtotal), 445, currentY, { align: 'right', width: 100 });
 
     currentY += 16;
     doc.font('Helvetica').fillColor(textGray).text(`Tax (${invoice.tax_rate || 0}%):`, summaryX, currentY);
-    doc.font('Helvetica-Bold').fillColor(secondaryColor).text(`$${Number(invoice.tax_amount || 0).toFixed(2)}`, 485, currentY, { align: 'right', width: 55 });
+    doc.font('Helvetica-Bold').fillColor(secondaryColor).text(formatINRPdf(invoice.tax_amount || 0), 445, currentY, { align: 'right', width: 100 });
 
     currentY += 18;
-    doc.rect(summaryX - 10, currentY - 4, 210, 28).fill(primaryColor);
+    doc.rect(summaryX - 10, currentY - 4, 240, 28).fill(primaryColor);
     doc.font('Helvetica-Bold').fontSize(11).fillColor('#FFFFFF').text('Total Due:', summaryX, currentY + 4);
-    doc.fontSize(12).fillColor('#FFFFFF').text(`$${Number(invoice.total_amount).toFixed(2)}`, 485, currentY + 4, { align: 'right', width: 55 });
+    doc.fontSize(12).fillColor('#FFFFFF').text(formatINRPdf(invoice.total_amount), 435, currentY + 4, { align: 'right', width: 100 });
 
     // Notes & Payment Instructions
     currentY += 45;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import { TimerProvider, useTimer } from './context/TimerContext';
 import { api } from './api';
 
@@ -7,6 +8,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import StopwatchBar from './components/StopwatchBar';
 import ProfileModal from './components/ProfileModal';
+import AuthModal from './components/AuthModal';
 import DashboardView from './components/DashboardView';
 import ClientsView from './components/ClientsView';
 import ProjectsView from './components/ProjectsView';
@@ -24,6 +26,7 @@ function AppContent() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [toast, setToast] = useState(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -84,7 +87,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#fbf9f5] text-[#1c1917] flex flex-row font-sans selection:bg-[#e8e1d3]">
-      {/* Toast Notification (Ivory / Sage / Terracotta) */}
+      {/* Toast Notification */}
       {toast && (
         <div
           className={`fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-dropdown border flex items-center space-x-2.5 text-xs font-medium transition-all ${
@@ -169,6 +172,16 @@ function AppContent() {
       <ProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
+        onSwitchAccount={() => {
+          setIsProfileOpen(false);
+          setIsAuthOpen(true);
+        }}
+      />
+
+      {/* Auth Modal for Sign In, Registration, and Multi-user Isolation */}
+      <AuthModal
+        isOpen={!user || isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
       />
     </div>
   );
@@ -177,10 +190,11 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <TimerProvider>
-        <AppContent />
-      </TimerProvider>
+      <SocketProvider>
+        <TimerProvider>
+          <AppContent />
+        </TimerProvider>
+      </SocketProvider>
     </AuthProvider>
   );
 }
-

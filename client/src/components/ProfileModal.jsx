@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api';
+import { formatINR } from '../utils/currency';
 import {
   X,
   Mail,
@@ -8,13 +9,14 @@ import {
   CheckCircle,
   Save,
   LogOut,
+  Users,
 } from 'lucide-react';
 
-export default function ProfileModal({ isOpen, onClose }) {
+export default function ProfileModal({ isOpen, onClose, onSwitchAccount }) {
   const { user, updateProfile, togglePlan, logout } = useAuth();
 
   const [name, setName] = useState(user?.name || '');
-  const [hourlyRate, setHourlyRate] = useState(user?.hourly_rate || 85);
+  const [hourlyRate, setHourlyRate] = useState(user?.hourly_rate || 1500);
   const [isSaving, setIsSaving] = useState(false);
   const [isTogglingPlan, setIsTogglingPlan] = useState(false);
   const [message, setMessage] = useState('');
@@ -23,7 +25,7 @@ export default function ProfileModal({ isOpen, onClose }) {
   useEffect(() => {
     if (user) {
       setName(user.name || '');
-      setHourlyRate(user.hourly_rate || 85);
+      setHourlyRate(user.hourly_rate || 1500);
     }
   }, [user]);
 
@@ -65,6 +67,11 @@ export default function ProfileModal({ isOpen, onClose }) {
     } finally {
       setIsTogglingPlan(false);
     }
+  }
+
+  function handleLogout() {
+    logout();
+    onClose();
   }
 
   const summary = dashboardStats?.summary || {};
@@ -148,7 +155,7 @@ export default function ProfileModal({ isOpen, onClose }) {
           <div className="p-3 rounded-xl bg-white border border-[#e8e1d3]">
             <span className="text-[10px] uppercase font-bold text-[#78716c] block">Projects</span>
             <span className="text-base font-bold text-[#1c1917] font-mono">
-              {summary.active_projects || 4}
+              {summary.active_projects || 0}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-white border border-[#e8e1d3]">
@@ -166,7 +173,7 @@ export default function ProfileModal({ isOpen, onClose }) {
           <div className="p-3 rounded-xl bg-white border border-[#e8e1d3]">
             <span className="text-[10px] uppercase font-bold text-[#78716c] block">Revenue</span>
             <span className="text-base font-bold text-[#4d6b53] font-mono">
-              ${Number(summary.total_revenue || 0).toLocaleString()}
+              {formatINR(summary.total_revenue || 0)}
             </span>
           </div>
         </div>
@@ -196,12 +203,12 @@ export default function ProfileModal({ isOpen, onClose }) {
 
             <div>
               <label className="block text-xs font-semibold text-[#44403c] mb-1">
-                Default Hourly Rate ($/hr)
+                Default Hourly Rate (₹/hr)
               </label>
               <input
                 type="number"
-                min="10"
-                step="5"
+                min="0"
+                step="50"
                 required
                 value={hourlyRate}
                 onChange={(e) => setHourlyRate(e.target.value)}
@@ -211,14 +218,27 @@ export default function ProfileModal({ isOpen, onClose }) {
           </div>
 
           <div className="flex items-center justify-between pt-3">
-            <button
-              type="button"
-              onClick={logout}
-              className="text-xs text-[#a74328] hover:text-[#86341f] flex items-center gap-1.5 transition font-medium"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Log Out</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="text-xs text-[#a74328] hover:text-[#86341f] flex items-center gap-1.5 transition font-medium"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
+              </button>
+
+              {onSwitchAccount && (
+                <button
+                  type="button"
+                  onClick={onSwitchAccount}
+                  className="text-xs text-[#57534e] hover:text-[#1c1917] flex items-center gap-1.5 transition font-medium"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Switch Account</span>
+                </button>
+              )}
+            </div>
 
             <button
               type="submit"

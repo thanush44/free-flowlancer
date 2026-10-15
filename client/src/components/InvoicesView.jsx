@@ -15,6 +15,7 @@ import {
   X,
   AlertTriangle,
 } from 'lucide-react';
+import { formatINR, formatRateINR } from '../utils/currency';
 
 export default function InvoicesView() {
   const [invoices, setInvoices] = useState([]);
@@ -311,7 +312,7 @@ export default function InvoicesView() {
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-mono font-bold text-charcoal-900 text-sm">
-                        ${Number(inv.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatINR(inv.total_amount)}
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
@@ -439,7 +440,7 @@ export default function InvoicesView() {
                     <option value="">Select a Client</option>
                     {clients.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name} {c.company ? `(${c.company})` : ''} - ${c.default_hourly_rate}/hr
+                        {c.name} {c.company ? `(${c.company})` : ''} - {formatRateINR(c.default_hourly_rate)}
                       </option>
                     ))}
                   </select>
@@ -555,7 +556,7 @@ export default function InvoicesView() {
                                   {Number(log.hours).toFixed(2)}h
                                 </td>
                                 <td className="py-2.5 px-3 text-right font-mono font-bold text-charcoal-900">
-                                  ${Number(log.amount).toFixed(2)}
+                                  {formatINR(log.amount)}
                                 </td>
                               </tr>
                             );
@@ -625,10 +626,10 @@ export default function InvoicesView() {
                 {/* Subtotal & Total Preview */}
                 <div className="p-3.5 bg-ivory-100 rounded-xl border border-charcoal-200 flex items-center justify-between text-xs">
                   <div className="space-y-0.5">
-                    <span className="text-charcoal-600 block font-medium">Subtotal: ${wizardSubtotal.toFixed(2)}</span>
+                    <span className="text-charcoal-600 block font-medium">Subtotal: {formatINR(wizardSubtotal)}</span>
                     {taxRate > 0 && (
                       <span className="text-charcoal-600 block font-medium">
-                        Tax ({taxRate}%): ${wizardTaxAmount.toFixed(2)}
+                        Tax ({taxRate}%): {formatINR(wizardTaxAmount)}
                       </span>
                     )}
                   </div>
@@ -637,7 +638,7 @@ export default function InvoicesView() {
                       Total Invoice Amount
                     </span>
                     <span className="text-base font-bold text-charcoal-900 font-mono">
-                      ${wizardTotalAmount.toFixed(2)}
+                      {formatINR(wizardTotalAmount)}
                     </span>
                   </div>
                 </div>

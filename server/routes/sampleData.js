@@ -17,44 +17,44 @@ router.post('/seed', async (req, res) => {
     await db.runAsync('DELETE FROM clients WHERE user_id = ?', [userId]);
 
     // Ensure user has Pro plan to experience all sample data and unlimited clients
-    await db.runAsync("UPDATE users SET plan = 'pro' WHERE id = ?", [userId]);
+    await db.runAsync("UPDATE users SET plan = 'pro', hourly_rate = 2500.0 WHERE id = ?", [userId]);
 
-    // 1. Insert 4 Clients
+    // 1. Insert 4 Clients with realistic INR hourly rates
     const clientsData = [
       {
         name: 'Sarah Connor',
         email: 'sarah@skynet-solutions.io',
-        phone: '+1 (555) 349-2041',
-        company: 'Cyberdyne Systems',
-        default_hourly_rate: 95.0,
-        address: '100 Silicon Way, Tech District, SF',
+        phone: '+91 98765 43210',
+        company: 'Cyberdyne Systems India',
+        default_hourly_rate: 2500.0,
+        address: '100 Silicon Way, Whitefield, Bengaluru, KA',
         notes: 'Enterprise account. Monthly invoicing cycle.',
       },
       {
         name: 'Marcus Sterling',
         email: 'm.sterling@apexcreative.co',
-        phone: '+1 (555) 892-1144',
+        phone: '+91 98234 56789',
         company: 'Apex Creative Studio',
-        default_hourly_rate: 80.0,
-        address: '742 Broadway St, New York, NY',
+        default_hourly_rate: 1800.0,
+        address: '742 Bandra Kurla Complex, Mumbai, MH',
         notes: 'High-growth design consultancy. Fast turnaround.',
       },
       {
         name: 'Elena Rostova',
         email: 'elena@novafinance.app',
-        phone: '+1 (555) 774-9032',
-        company: 'Nova FinTech',
-        default_hourly_rate: 110.0,
-        address: '25 Bank Street, London / Remote',
+        phone: '+91 97123 45678',
+        company: 'Nova FinTech India',
+        default_hourly_rate: 3200.0,
+        address: '25 Financial District, Gachibowli, Hyderabad, TS',
         notes: 'Fintech compliance and security heavy.',
       },
       {
         name: 'David Zhao',
         email: 'david@greenpulse.earth',
-        phone: '+1 (555) 432-8871',
+        phone: '+91 99887 76655',
         company: 'GreenPulse Climate',
-        default_hourly_rate: 75.0,
-        address: '400 Eco Blvd, Seattle, WA',
+        default_hourly_rate: 2000.0,
+        address: '400 Eco Park, Hinjawadi, Pune, MH',
         notes: 'Sustainability dashboard and tracking metrics.',
       },
     ];
@@ -62,14 +62,14 @@ router.post('/seed', async (req, res) => {
     const clientIds = [];
     for (const c of clientsData) {
       const resC = await db.runAsync(
-        `INSERT INTO clients (user_id, name, email, phone, company, default_hourly_rate, address, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO clients (user_id, name, email, phone, company, default_hourly_rate, address, notes, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         [userId, c.name, c.email, c.phone, c.company, c.default_hourly_rate, c.address, c.notes]
       );
       clientIds.push(resC.lastID);
     }
 
-    // 2. Insert 5 Projects
+    // 2. Insert 5 Projects with INR Budgets
     const today = new Date();
     const futureDate = (days) => {
       const d = new Date(today);
@@ -88,7 +88,7 @@ router.post('/seed', async (req, res) => {
         name: 'Automated Microservices Cloud Architecture',
         description: 'Scalable backend rewrite using Express, Node.js and distributed caching.',
         status: 'active',
-        budget: 6500.0,
+        budget: 180000.0,
         deadline: futureDate(14),
       },
       {
@@ -96,15 +96,15 @@ router.post('/seed', async (req, res) => {
         name: 'Next-Gen Portfolio & Design System',
         description: 'Component library with dark mode, fluid typography and Figma tokens.',
         status: 'active',
-        budget: 4200.0,
+        budget: 120000.0,
         deadline: futureDate(7),
       },
       {
         client_id: clientIds[2],
-        name: 'Fintech Payment Gateway & Stripe Integration',
+        name: 'Fintech Payment Gateway & UPI Integration',
         description: 'Secure PCI-compliant payment flow, automated webhooks, and ledger reconciliation.',
         status: 'active',
-        budget: 8000.0,
+        budget: 250000.0,
         deadline: futureDate(25),
       },
       {
@@ -112,16 +112,16 @@ router.post('/seed', async (req, res) => {
         name: 'Carbon Emissions Real-time Dashboard',
         description: 'Data-dense visualization dashboard for enterprise sustainability reporting.',
         status: 'active',
-        budget: 3500.0,
-        deadline: futureDate(3),
+        budget: 150000.0,
+        deadline: futureDate(10),
       },
       {
         client_id: clientIds[1],
-        name: 'Brand Guidelines & Identity Refresh',
-        description: 'Brand identity assets, SVG icon sets, and responsive styling tokens.',
+        name: 'Brand Identity & Visual Guidelines',
+        description: 'Complete visual branding sprint, vector assets, and typography licensing.',
         status: 'completed',
-        budget: 2500.0,
-        deadline: pastDate(10),
+        budget: 85000.0,
+        deadline: pastDate(20),
       },
     ];
 
@@ -137,21 +137,20 @@ router.post('/seed', async (req, res) => {
 
     // 3. Insert Tasks
     const tasksData = [
-      // Project 0 (Skynet Cloud)
-      { project_id: projectIds[0], title: 'Refactor REST API endpoints & route validations', status: 'completed', due_date: pastDate(5), estimated_hours: 8 },
-      { project_id: projectIds[0], title: 'Implement JWT authentication & RBAC middleware', status: 'in_progress', due_date: futureDate(3), estimated_hours: 12 },
-      { project_id: projectIds[0], title: 'Setup Redis caching layer for read-heavy routes', status: 'todo', due_date: futureDate(10), estimated_hours: 6 },
-      // Project 1 (Apex Design System)
-      { project_id: projectIds[1], title: 'Audit existing color palette & spacing units', status: 'completed', due_date: pastDate(8), estimated_hours: 5 },
-      { project_id: projectIds[1], title: 'Build accessible Modal and Popover components', status: 'in_progress', due_date: futureDate(2), estimated_hours: 7 },
-      { project_id: projectIds[1], title: 'Write Storybook documentation & usage guide', status: 'todo', due_date: futureDate(6), estimated_hours: 4 },
-      // Project 2 (Nova Fintech)
-      { project_id: projectIds[2], title: 'Stripe webhook signature validation', status: 'completed', due_date: pastDate(12), estimated_hours: 10 },
-      { project_id: projectIds[2], title: 'Currency conversion & exchange rate cron', status: 'in_progress', due_date: futureDate(8), estimated_hours: 8 },
-      { project_id: projectIds[2], title: 'Double-entry bookkeeping database audit', status: 'todo', due_date: futureDate(18), estimated_hours: 14 },
-      // Project 3 (GreenPulse)
-      { project_id: projectIds[3], title: 'Assemble Recharts heatmaps for factory emissions', status: 'in_progress', due_date: futureDate(2), estimated_hours: 6 },
-      { project_id: projectIds[3], title: 'Export report data to PDF & CSV format', status: 'todo', due_date: futureDate(3), estimated_hours: 5 },
+      { project_id: projectIds[0], title: 'Design database entity relationships', status: 'done', due_date: pastDate(18), estimated_hours: 6 },
+      { project_id: projectIds[0], title: 'Implement Redis distributed lock for transaction processing', status: 'in_progress', due_date: futureDate(4), estimated_hours: 12 },
+      { project_id: projectIds[0], title: 'Load testing & latency optimization (p99 < 50ms)', status: 'todo', due_date: futureDate(12), estimated_hours: 8 },
+
+      { project_id: projectIds[1], title: 'Setup Tailwind 4 token architecture', status: 'done', due_date: pastDate(10), estimated_hours: 5 },
+      { project_id: projectIds[1], title: 'Build accessible data-table & charts components', status: 'in_progress', due_date: futureDate(3), estimated_hours: 16 },
+      { project_id: projectIds[1], title: 'Lighthouse accessibility & contrast audit', status: 'todo', due_date: futureDate(6), estimated_hours: 4 },
+
+      { project_id: projectIds[2], title: 'Stripe Elements SDK & UPI integration', status: 'done', due_date: pastDate(5), estimated_hours: 14 },
+      { project_id: projectIds[2], title: 'Webhook idempotent replay protection', status: 'in_progress', due_date: futureDate(8), estimated_hours: 8 },
+      { project_id: projectIds[2], title: 'Automated invoice generation trigger upon payment', status: 'todo', due_date: futureDate(20), estimated_hours: 10 },
+
+      { project_id: projectIds[3], title: 'Recharts stacked area and bar telemetry', status: 'in_progress', due_date: futureDate(2), estimated_hours: 10 },
+      { project_id: projectIds[3], title: 'Streaming real-time SSE WebSocket alerts', status: 'todo', due_date: futureDate(9), estimated_hours: 12 },
     ];
 
     const taskIds = [];
@@ -164,39 +163,38 @@ router.post('/seed', async (req, res) => {
       taskIds.push(resT.lastID);
     }
 
-    // 4. Insert Invoices (to immediately populate charts!)
-    // Let's create 3 past invoices (2 paid, 1 pending)
+    // 4. Insert Invoices with INR amounts
     const invoice1Date = pastDate(45);
-    const invoice2Date = pastDate(20);
-    const invoice3Date = pastDate(5);
+    const invoice2Date = pastDate(15);
+    const invoice3Date = pastDate(2);
 
     const inv1Items = [
-      { project_name: 'Brand Guidelines & Identity Refresh', description: 'Brand exploration & typography kit', hours: 15, rate: 80.0, amount: 1200.0 },
-      { project_name: 'Brand Guidelines & Identity Refresh', description: 'Logo vectorization and icon exports', hours: 10, rate: 80.0, amount: 800.0 },
+      { project_name: 'Brand Identity & Visual Guidelines', description: 'Brand exploration & typography kit', hours: 15, rate: 1800.0, amount: 27000.0 },
+      { project_name: 'Brand Identity & Visual Guidelines', description: 'Logo vectorization and icon exports', hours: 10, rate: 1800.0, amount: 18000.0 },
     ];
     const resInv1 = await db.runAsync(
       `INSERT INTO invoices (user_id, client_id, invoice_number, issue_date, due_date, subtotal, tax_rate, tax_amount, total_amount, status, notes, items_json)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?)`,
-      [userId, clientIds[1], 'INV-2026-001', invoice1Date, pastDate(31), 2000.0, 0, 0, 2000.0, 'Paid via Wire Transfer on ' + pastDate(30), JSON.stringify(inv1Items)]
+      [userId, clientIds[1], 'INV-2026-001', invoice1Date, pastDate(31), 45000.0, 0, 0, 45000.0, 'Paid via IMPS / UPI on ' + pastDate(30), JSON.stringify(inv1Items)]
     );
 
     const inv2Items = [
-      { project_name: 'Automated Microservices Cloud Architecture', description: 'Initial Docker setup and database schema migrations', hours: 22, rate: 95.0, amount: 2090.0 },
-      { project_name: 'Automated Microservices Cloud Architecture', description: 'API benchmark testing & profiling', hours: 10, rate: 95.0, amount: 950.0 },
+      { project_name: 'Automated Microservices Cloud Architecture', description: 'Initial Docker setup and database schema migrations', hours: 22, rate: 2500.0, amount: 55000.0 },
+      { project_name: 'Automated Microservices Cloud Architecture', description: 'API benchmark testing & profiling', hours: 10, rate: 2500.0, amount: 25000.0 },
     ];
     const resInv2 = await db.runAsync(
       `INSERT INTO invoices (user_id, client_id, invoice_number, issue_date, due_date, subtotal, tax_rate, tax_amount, total_amount, status, notes, items_json)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?)`,
-      [userId, clientIds[0], 'INV-2026-002', invoice2Date, pastDate(6), 3040.0, 5.0, 152.0, 3192.0, 'Paid in full.', JSON.stringify(inv2Items)]
+      [userId, clientIds[0], 'INV-2026-002', invoice2Date, pastDate(6), 80000.0, 18.0, 14400.0, 94400.0, 'Paid in full via Bank Transfer.', JSON.stringify(inv2Items)]
     );
 
     const inv3Items = [
-      { project_name: 'Fintech Payment Gateway & Stripe Integration', description: 'Stripe Elements checkout UI and webhook handling', hours: 28, rate: 110.0, amount: 3080.0 },
+      { project_name: 'Fintech Payment Gateway & UPI Integration', description: 'Stripe Elements checkout UI and webhook handling', hours: 28, rate: 3200.0, amount: 89600.0 },
     ];
     const resInv3 = await db.runAsync(
       `INSERT INTO invoices (user_id, client_id, invoice_number, issue_date, due_date, subtotal, tax_rate, tax_amount, total_amount, status, notes, items_json)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
-      [userId, clientIds[2], 'INV-2026-003', invoice3Date, futureDate(9), 3080.0, 0, 0, 3080.0, 'Pending client sign-off on staging sprint.', JSON.stringify(inv3Items)]
+      [userId, clientIds[2], 'INV-2026-003', invoice3Date, futureDate(9), 89600.0, 0, 0, 89600.0, 'Pending client sign-off on staging sprint.', JSON.stringify(inv3Items)]
     );
 
     // 5. Insert Time Logs
@@ -222,7 +220,7 @@ router.post('/seed', async (req, res) => {
       [userId, projectIds[2], taskIds[6], 'Stripe Elements checkout UI and webhook handling', pastDate(8) + 'T14:00:00Z', 1680, resInv3.lastID]
     );
 
-    // B) UNBILLED time logs ready for the evaluator to invoice!
+    // B) UNBILLED time logs ready for invoicing!
     const unbilledSample = [
       { project_id: projectIds[0], task_id: taskIds[1], desc: 'Implemented JWT token verification & refresh logic', daysAgo: 3, mins: 240 },
       { project_id: projectIds[0], task_id: taskIds[1], desc: 'Role-based access control and rate limiter middleware', daysAgo: 2, mins: 180 },

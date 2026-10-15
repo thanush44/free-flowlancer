@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export function getAuthToken() {
   return localStorage.getItem('ff_token');
@@ -33,7 +33,11 @@ async function request(endpoint, options = {}) {
     if (!response.ok) {
       const errorText = await response.text();
       let parsed = {};
-      try { parsed = JSON.parse(errorText); } catch { /* ignore */ }
+      try {
+        parsed = JSON.parse(errorText);
+      } catch {
+        /* ignore */
+      }
       throw new Error(parsed.error || 'Failed to download PDF');
     }
     return response.blob();
@@ -52,6 +56,9 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
+  // Health
+  getHealth: () => request('/health'),
+
   // Auth
   register: (payload) => request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
@@ -63,7 +70,10 @@ export const api = {
   getDashboardStats: () => request('/dashboard/stats'),
 
   // Clients
-  getClients: () => request('/clients'),
+  getClients: (search = '') => {
+    const qs = search && search.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
+    return request(`/clients${qs}`);
+  },
   getClient: (id) => request(`/clients/${id}`),
   createClient: (payload) => request('/clients', { method: 'POST', body: JSON.stringify(payload) }),
   updateClient: (id, payload) => request(`/clients/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
